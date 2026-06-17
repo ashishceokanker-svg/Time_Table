@@ -1,4 +1,4 @@
-const { createClient } = require('@vercel/postgres');
+const { Client } = require('pg');
 const fs = require('fs');
 const path = require('path');
 // Automatically map prefixed Vercel Postgres connection strings (e.g. Time_Table_POSTGRES_URL)
@@ -57,8 +57,11 @@ module.exports = async (req, res) => {
         try {
             let data = {};
             if (usePostgres) {
-                const client = createClient({
-                    connectionString: process.env.POSTGRES_URL
+                const client = new Client({
+                    connectionString: process.env.POSTGRES_URL,
+                    ssl: {
+                        rejectUnauthorized: false
+                    }
                 });
                 await client.connect();
                 try {
@@ -117,8 +120,11 @@ module.exports = async (req, res) => {
                 return;
             }
             if (usePostgres) {
-                const client = createClient({
-                    connectionString: process.env.POSTGRES_URL
+                const client = new Client({
+                    connectionString: process.env.POSTGRES_URL,
+                    ssl: {
+                        rejectUnauthorized: false
+                    }
                 });
                 await client.connect();
                 try {
@@ -182,7 +188,7 @@ module.exports = async (req, res) => {
                     localData = JSON.parse(fs.readFileSync(LOCAL_DB_PATH, 'utf8'));
                 }
                 localData[key] = data;
-                fs.writeFileSync(localData, JSON.stringify(localData, null, 2), 'utf8');
+                fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(localData, null, 2), 'utf8');
             }
             res.status(200).json({ success: true });
         } catch (error) {
