@@ -1,11 +1,14 @@
 const { Client } = require('pg');
 const fs = require('fs');
 const path = require('path');
+
 if (!process.env.POSTGRES_URL) {
     const k = Object.keys(process.env).find(x => x.endsWith('_POSTGRES_URL'));
     if (k) process.env.POSTGRES_URL = process.env[k];
 }
+
 const LOCAL_DB_PATH = path.join(process.cwd(), 'local_db.json');
+
 async function initDb(c) {
     await c.query(`
         CREATE TABLE IF NOT EXISTS users (username VARCHAR(100) PRIMARY KEY, password_hash TEXT NOT NULL, class_grade VARCHAR(50) NOT NULL, role VARCHAR(50) NOT NULL, status VARCHAR(50) NOT NULL);
@@ -13,12 +16,16 @@ async function initDb(c) {
         CREATE TABLE IF NOT EXISTS logs (id VARCHAR(100) PRIMARY KEY, username VARCHAR(100) NOT NULL, date VARCHAR(50) NOT NULL, subject VARCHAR(100) NOT NULL, duration INTEGER NOT NULL, topic TEXT, notes TEXT);
     `);
 }
+
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
     if (req.method === 'OPTIONS') return res.status(200).end();
+
     const useDb = !!process.env.POSTGRES_URL;
+
     if (req.method === 'GET') {
         try {
             if (useDb) {
@@ -47,6 +54,7 @@ module.exports = async (req, res) => {
         try {
             const { key, data } = req.body;
             if (!key || !data) return res.status(400).json({ error: 'Missing key or data' });
+
             if (useDb) {
                 const c = new Client({ connectionString: process.env.POSTGRES_URL, ssl: { rejectUnauthorized: false } });
                 await c.connect();
