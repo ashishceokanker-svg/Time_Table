@@ -66,9 +66,10 @@ const SAMPLE_TIMETABLE = [];
 const SAMPLE_LOGS = [];
 
 // --- INITIALIZATION ---
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initApp();
     setupEventListeners();
+    await loadDatabase();
 });
 
 function initApp() {
@@ -187,17 +188,98 @@ function initApp() {
 function saveToLocalStorage(key) {
     if (key === 'timetable') {
         localStorage.setItem('anti_gravity_timetable', JSON.stringify(AppState.timetable));
+        saveToDatabase('timetable', AppState.timetable);
     } else if (key === 'logs') {
         localStorage.setItem('anti_gravity_logs', JSON.stringify(AppState.logs));
+        saveToDatabase('logs', AppState.logs);
     } else if (key === 'theme') {
         localStorage.setItem('anti_gravity_theme', AppState.theme);
     } else if (key === 'users') {
         localStorage.setItem('anti_gravity_users', JSON.stringify(AppState.users));
+        saveToDatabase('users', AppState.users);
     } else if (key === 'current_user') {
         if (AppState.currentUser) {
             localStorage.setItem('anti_gravity_current_user', JSON.stringify(AppState.currentUser));
         } else {
             localStorage.removeItem('anti_gravity_current_user');
+        }
+    }
+}
+
+// Base API URL resolver: points to absolute Vercel deployment URL if loaded as local file:/// (inside Android app)
+const API_BASE = window.location.protocol === 'file:' ? 'https://timetable-tau-six.vercel.app' : '';
+
+async function saveToDatabase(key, data) {
+    try {
+        const response = await fetch(`${API_BASE}/api/db`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ key, data })
+        });
+        if (!response.ok) {
+            const errBody = await response.json().catch(() => ({}));
+            console.error(`Failed to save ${key} to cloud database:`, errBody.error || response.statusText);
+        }
+    } catch (error) {
+        console.error(`Network error saving ${key} to cloud database:`, error);
+    }
+}
+
+async function loadDatabase() {
+    const overlay = document.getElementById('db-loading-overlay');
+    try {
+        const response = await fetch(`${API_BASE}/api/db`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch database: ${response.statusText}`);
+        }
+        const data = await response.json();
+        
+        // Sync retrieved data to AppState
+        if (data.users && Array.isArray(data.users)) {
+            AppState.users = data.users;
+            const hasAdmin = AppState.users.some(u => u.username.toLowerCase() === 'admin');
+            if (!hasAdmin) {
+                AppState.users.push({ username: 'admin', passwordHash: 'admin', classGrade: 'Admin', role: 'admin', status: 'approved' });
+            }
+            localStorage.setItem('anti_gravity_users', JSON.stringify(AppState.users));
+        }
+        if (data.timetable && Array.isArray(data.timetable)) {
+            AppState.timetable = data.timetable;
+            localStorage.setItem('anti_gravity_timetable', JSON.stringify(AppState.timetable));
+        }
+        if (data.logs && Array.isArray(data.logs)) {
+            AppState.logs = data.logs;
+            localStorage.setItem('anti_gravity_logs', JSON.stringify(AppState.logs));
+        }
+        
+        console.log('Successfully synced state with cloud database.');
+        
+        // Re-authenticate current user status just in case (e.g. if deactivated or approved status changed)
+        if (AppState.currentUser) {
+            const freshUser = AppState.users.find(u => u.username.toLowerCase() === AppState.currentUser.username.toLowerCase());
+            if (freshUser) {
+                AppState.currentUser = freshUser;
+                localStorage.setItem('anti_gravity_current_user', JSON.stringify(AppState.currentUser));
+            } else {
+                // User was deleted from the global db
+                AppState.currentUser = null;
+                localStorage.removeItem('anti_gravity_current_user');
+            }
+        }
+        
+        // Re-verify authentication state and re-render current view
+        checkAuthState();
+        
+    } catch (error) {
+        console.warn('Could not load cloud database, falling back to offline mode:', error);
+    } finally {
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 500); // match transition speed
         }
     }
 }

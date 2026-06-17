@@ -19,6 +19,85 @@ var MIME_TYPES = {
 var server = http.createServer(function (req, res) {
     console.log('[' + new Date().toISOString() + '] ' + req.method + ' ' + req.url);
 
+    // Handle API endpoints
+    if (req.url.startsWith('/api/db')) {
+        if (req.method === 'OPTIONS') {
+            res.writeHead(200, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            });
+            res.end();
+            return;
+        }
+
+        var LOCAL_DB_PATH = path.join(__dirname, 'local_db.json');
+
+        if (req.method === 'GET') {
+            res.writeHead(200, {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            });
+            if (fs.existsSync(LOCAL_DB_PATH)) {
+                fs.readFile(LOCAL_DB_PATH, 'utf8', function (err, data) {
+                    if (err) {
+                        res.end(JSON.stringify({ error: err.message }));
+                    } else {
+                        res.end(data);
+                    }
+                });
+            } else {
+                res.end(JSON.stringify({ users: [], timetable: [], logs: [] }));
+            }
+            return;
+        }
+
+        if (req.method === 'POST') {
+            var body = '';
+            req.on('data', function (chunk) {
+                body += chunk;
+            });
+            req.on('end', function () {
+                try {
+                    var payload = JSON.parse(body);
+                    var key = payload.key;
+                    var data = payload.data;
+
+                    if (!key || !data) {
+                        res.writeHead(400, {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        });
+                        res.end(JSON.stringify({ error: 'Missing key or data' }));
+                        return;
+                    }
+
+                    var localData = { users: [], timetable: [], logs: [] };
+                    if (fs.existsSync(LOCAL_DB_PATH)) {
+                        try {
+                            localData = JSON.parse(fs.readFileSync(LOCAL_DB_PATH, 'utf8'));
+                        } catch (e) {}
+                    }
+                    localData[key] = data;
+                    fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(localData, null, 2), 'utf8');
+
+                    res.writeHead(200, {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    });
+                    res.end(JSON.stringify({ success: true }));
+                } catch (error) {
+                    res.writeHead(500, {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    });
+                    res.end(JSON.stringify({ error: error.message }));
+                }
+            });
+            return;
+        }
+    }
+
     // Resolve URL path to local file path
     var filePath = '.' + req.url;
     if (filePath === './') {
