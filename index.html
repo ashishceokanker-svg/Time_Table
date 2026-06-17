@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <!-- Google Fonts: Inter & Space Grotesk -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container" style="display: none;">
+        <!-- Sidebar Navigation -->
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <div class="app-logo">
+                    <div class="logo-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+                    <span id="logo-text">Time Table Tracker</span>
+                </div>
+                <div class="grade-badge" id="logo-grade-badge">Grade 11</div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul class="sidebar-menu">
+                    <li class="nav-item active" data-view="dashboard" id="nav-dashboard">
+                        <i class="fa-solid fa-chart-simple"></i>
+                        <span>Dashboard</span>
+                    </li>
+                    <li class="nav-item" data-view="timetable" id="nav-timetable">
+                        <i class="fa-solid fa-calendar-days"></i>
+                        <span>Timetable</span>
+                    </li>
+                    <li class="nav-item" data-view="logs" id="nav-logs">
+                        <i class="fa-solid fa-receipt"></i>
+                        <span>Study Logs</span>
+                    </li>
+                    <li class="nav-item" data-view="reports" id="nav-reports">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <span>Reports</span>
+                    </li>
+                    <li class="nav-item hide" data-view="admin" id="nav-admin">
+                        <i class="fa-solid fa-user-shield"></i>
+                        <span>Admin Panel</span>
+                    </li>
+                    <li class="nav-item" data-view="contact" id="nav-contact">
+                        <i class="fa-solid fa-address-card"></i>
+                        <span>Contact</span>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="theme-toggle" class="theme-toggle-btn" title="Toggle Theme">
+                    <i class="fa-solid fa-moon"></i>
+                    <span>Dark Mode</span>
+                </button>
+                <div class="user-profile" style="position: relative; width: 100%;">
+                    <div class="user-avatar" id="profile-avatar">S</div>
+                    <div class="user-info">
+                        <span class="user-name" id="profile-name">Scholar Mode</span>
+                        <span class="user-status" id="profile-status">11th Grade</span>
+                    </div>
+                    <button id="btn-logout" class="btn btn-secondary btn-icon" style="position: absolute; right: 0; width: 32px; height: 32px; padding: 0;" title="Logout">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="app-main">
+            <!-- Top Header -->
+            <header class="app-header">
+                <div class="header-welcome">
+                    <h1 id="welcome-message">Welcome back!</h1>
+                    <p class="text-secondary" id="current-date-display">Tuesday, June 16, 2026</p>
+                </div>
+                <div class="header-actions" style="display: flex; align-items: center; gap: 12px;">
+                    <button class="btn btn-primary" id="btn-quick-log">
+                        <i class="fa-solid fa-plus"></i> Log Study Session
+                    </button>
+                    <button class="btn btn-danger" id="btn-logout-header" title="Logout">
+                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard View -->
+            <section id="view-dashboard" class="content-view active">
+                <!-- Theme Switcher Card -->
+                <div class="card theme-switcher-card" style="margin-bottom: 24px;">
+                    <div class="card-body" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 16px 24px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="metric-icon bg-primary-light text-primary" style="width: 36px; height: 36px; font-size: 0.95rem;">
+                                <i class="fa-solid fa-palette"></i>
+                            </div>
+                            <div>
+                                <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 2px;">Desk Theme Customization</h4>
+                                <p class="text-secondary" style="font-size: 0.75rem;">Instantly personalize the color palette of your study desk</p>
+                            </div>
+                        </div>
+                        <div class="theme-options-list" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-secondary btn-theme-select active" data-theme-val="dark" style="padding: 6px 12px; font-size: 0.8rem; min-height: 0;">
+                                <i class="fa-solid fa-moon" style="margin-right: 6px; font-size: 0.75rem;"></i>Dark Space
+                            </button>
+                            <button class="btn btn-secondary btn-theme-select" data-theme-val="light" style="padding: 6px 12px; font-size: 0.8rem; min-height: 0;">
+                                <i class="fa-solid fa-sun" style="margin-right: 6px; font-size: 0.75rem;"></i>Bright Desk
+                            </button>
+                            <button class="btn btn-secondary btn-theme-select" data-theme-val="ocean" style="padding: 6px 12px; font-size: 0.8rem; min-height: 0;">
+                                <i class="fa-solid fa-water" style="margin-right: 6px; font-size: 0.75rem;"></i>Ocean Breeze
+                            </button>
+                            <button class="btn btn-secondary btn-theme-select" data-theme-val="study" style="padding: 6px 12px; font-size: 0.8rem; min-height: 0;">
+                                <i class="fa-solid fa-tree" style="margin-right: 6px; font-size: 0.75rem;"></i>Warm Forest
+                            </button>
+                            <button class="btn btn-secondary btn-theme-select" data-theme-val="cyberpunk" style="padding: 6px 12px; font-size: 0.8rem; min-height: 0;">
+                                <i class="fa-solid fa-bolt" style="margin-right: 6px; font-size: 0.75rem;"></i>Neon Sunset
+                            </button>
+                            <button class="btn btn-secondary btn-theme-select" data-theme-val="minimal" style="padding: 6px 12px; font-size: 0.8rem; min-height: 0;">
+                                <i class="fa-solid fa-circle" style="margin-right: 6px; font-size: 0.75rem;"></i>Minimalist
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Missed Study Log Alerts -->
+                <div class="card missed-schedules-card" id="missed-schedules-dashboard-card" style="margin-bottom: 24px; border-left: 4px solid #ef4444;">
+                    <div class="card-header" style="background: rgba(239, 68, 68, 0.05); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(239, 68, 68, 0.1);">
+                        <h3 style="color: #ef4444; margin: 0; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-triangle-exclamation"></i> Missed Study Schedules</h3>
+                        <span class="badge" id="missed-schedules-dashboard-badge" style="background-color: #ef4444; color: white; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">0 Missed</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="missed-schedules-list" id="missed-schedules-dashboard-container" style="display: flex; flex-direction: column; gap: 12px; padding: 8px 0;">
+                            <!-- Dynamic missed schedules -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metrics Summary Cards -->
+                <div class="metrics-grid">
+                    <div class="metric-card card">
+                        <div class="card-body">
+                            <div class="metric-info">
+                                <span class="card-label">Weekly Compliance</span>
+                                <h2 class="metric-val" id="val-compliance">0%</h2>
+                                <span class="metric-change" id="val-compliance-subtext">0 of 0 target hours</span>
+                            </div>
+                            <div class="metric-visual">
+                                <svg class="progress-ring" width="80" height="80">
+                                    <circle class="progress-ring-bg" stroke="var(--border-color)" stroke-width="6" fill="transparent" r="32" cx="40" cy="40"/>
+                                    <circle class="progress-ring-bar" id="compliance-ring" stroke="var(--accent-primary)" stroke-width="6" fill="transparent" r="32" cx="40" cy="40" stroke-dasharray="201" stroke-dashoffset="201"/>
+                                </svg>
+                                <span class="ring-text" id="compliance-ring-text">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card card">
+                        <div class="card-body">
+                            <div class="metric-info">
+                                <span class="card-label">Actual Studied</span>
+                                <h2 class="metric-val" id="val-actual-hours">0.0h</h2>
+                                <span class="metric-change text-success" id="val-actual-subtext"><i class="fa-solid fa-arrow-up"></i> Weekly total</span>
+                            </div>
+                            <div class="metric-icon bg-success-light text-success">
+                                <i class="fa-solid fa-hourglass-half"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card card">
+                        <div class="card-body">
+                            <div class="metric-info">
+                                <span class="card-label">Target Schedule</span>
+                                <h2 class="metric-val" id="val-target-hours">0.0h</h2>
+                                <span class="metric-change" id="val-target-subtext">Weekly target</span>
+                            </div>
+                            <div class="metric-icon bg-primary-light text-primary">
+                                <i class="fa-solid fa-bullseye"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card card">
+                        <div class="card-body">
+                            <div class="metric-info">
+                                <span class="card-label">Top Subject</span>
+                                <h2 class="metric-val text-truncate" id="val-top-subject">None</h2>
+                                <span class="metric-change" id="val-top-subject-time">0 hrs logged</span>
+                            </div>
+                            <div class="metric-icon bg-warning-light text-warning">
+                                <i class="fa-solid fa-fire"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts & Analytics Section -->
+                <div class="analytics-grid">
+                    <!-- Target vs Actual Bar Chart -->
+                    <div class="card chart-card-large">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-chart-column text-primary"></i> Daily Timetable Compliance</h3>
+                            <div class="chart-legend">
+                                <span class="legend-item"><span class="legend-dot target-dot"></span>Target</span>
+                                <span class="legend-item"><span class="legend-dot actual-dot"></span>Actual</span>
+                            </div>
+                        </div>
+                        <div class="card-body chart-body">
+                            <div class="svg-chart-container" id="bar-chart-container">
+                                <!-- Bar chart will be rendered here dynamically via SVG -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Subject Breakdown & Today's Schedule -->
+                    <div class="card list-card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-circle-check text-success"></i> Today's Schedule Execution</h3>
+                            <span class="badge" id="today-schedule-badge">0 sessions</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="today-schedule-list" id="today-schedule-container">
+                                <!-- Dynamic Today's List -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Subject Breakdown Progress List & Pie Chart -->
+                    <div class="card list-card" id="subject-distribution-card">
+                        <div class="card-header" style="flex-wrap: wrap; gap: 8px;">
+                            <h3><i class="fa-solid fa-chart-pie text-warning"></i> Subject Distribution</h3>
+                            <div class="day-selector-tabs" style="padding: 2px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <button class="day-tab active" id="btn-chart-week" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px;">Week</button>
+                                <button class="day-tab" id="btn-chart-month" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px;">Month</button>
+                            </div>
+                        </div>
+                        <div class="card-body" style="display: flex; flex-direction: column; gap: 20px;">
+                            <!-- SVG Pie/Donut Chart Container -->
+                            <div class="pie-chart-wrapper" style="height: 160px; display: flex; align-items: center; justify-content: center;">
+                                <div id="pie-chart-container" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                                    <!-- Rendered dynamically via JS -->
+                                </div>
+                            </div>
+                            <div class="subject-progress-list" id="subject-distribution-container">
+                                <!-- Dynamic progress bars for subjects -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Timetable View -->
+            <section id="view-timetable" class="content-view">
+                <div class="section-actions">
+                    <div class="day-selector-tabs" id="timetable-day-tabs">
+                        <button class="day-tab active" data-day="1">Mon</button>
+                        <button class="day-tab" data-day="2">Tue</button>
+                        <button class="day-tab" data-day="3">Wed</button>
+                        <button class="day-tab" data-day="4">Thu</button>
+                        <button class="day-tab" data-day="5">Fri</button>
+                        <button class="day-tab" data-day="6">Sat</button>
+                        <button class="day-tab" data-day="0">Sun</button>
+                    </div>
+                    <button class="btn btn-primary" id="btn-add-schedule">
+                        <i class="fa-solid fa-plus"></i> Add Session
+                    </button>
+                </div>
+
+                <!-- Timetable Main Grid & Session List -->
+                <div class="timetable-layout-grid">
+                    <!-- Visual Calendar Column -->
+                    <div class="card timetable-visual-card">
+                        <div class="card-header">
+                            <h3 id="timetable-day-title">Monday's Schedule</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="timeline-visual" id="timetable-timeline">
+                                <!-- Render sessions along a 24h timeline vertically or in slots -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Session Cards list (Detailed CRUD list) -->
+                    <div class="timetable-list-column">
+                        <h3 class="list-title">Sessions</h3>
+                        <div class="sessions-list" id="timetable-list-container">
+                            <!-- Dynamic list of detailed timetable sessions -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Daily Logs View -->
+            <section id="view-logs" class="content-view">
+                <div class="logs-layout-grid">
+                    <!-- Study Log Input Form -->
+                    <div class="card log-form-card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-pen-nib text-primary"></i> Log Study Hours</h3>
+                        </div>
+                        <div class="card-body">
+                            <form id="study-log-form" class="vertical-form">
+                                <input type="hidden" id="log-id">
+                                
+                                <div class="form-group">
+                                    <label for="log-date">Date</label>
+                                    <input type="date" id="log-date" required>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Subject</label>
+                                        <select id="log-subject-select" required>
+                                            <option value="" disabled selected>Select Subject</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="flex: 0 0 100px;">
+                                        <label for="log-duration">Duration (mins)</label>
+                                        <input type="number" id="log-duration" min="5" max="480" placeholder="e.g. 90" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="log-topic">Topic Covered</label>
+                                    <select id="log-topic" required>
+                                        <option value="" disabled selected>Select Topic Covered</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="log-notes">Notes / Planned Exercises</label>
+                                    <select id="log-notes">
+                                        <option value="" disabled selected>Select Notes / Planned Exercises</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="log-file">Upload Study Material (Image/PDF)</label>
+                                    <div class="file-upload-wrapper">
+                                        <input type="file" id="log-file" accept="image/*,application/pdf" style="font-size: 0.8rem; padding: 6px;">
+                                    </div>
+                                    <div id="file-preview-container" class="hide" style="margin-top: 8px; display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: rgba(120, 120, 120, 0.08); border-radius: 8px; font-size: 0.8rem; border: 1px dashed var(--border-color);">
+                                        <span id="file-preview-name" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 80%;"></span>
+                                        <button type="button" id="btn-remove-file" class="btn btn-secondary btn-icon" style="width:24px; height:24px; padding:0; min-height:0; display:inline-flex; align-items:center; justify-content:center; font-size: 0.7rem;"><i class="fa-solid fa-xmark"></i></button>
+                                    </div>
+                                </div>
+
+                                <div class="form-buttons">
+                                    <button type="submit" class="btn btn-primary w-full" id="btn-submit-log">
+                                        <i class="fa-solid fa-check"></i> Save Log
+                                    </button>
+                                    <button type="button" class="btn btn-secondary w-full hide" id="btn-cancel-log-edit">
+                                        Cancel Edit
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- History logs feed -->
+                    <div class="card log-history-card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-clock-rotate-left text-success"></i> Study Log History</h3>
+                            <div class="log-filter-controls">
+                                <input type="month" id="filter-log-month" title="Filter by Month">
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="log-history-list" id="log-history-container">
+                                <!-- Dynamic logs feed grouped by date -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Reports View -->
+            <section id="view-reports" class="content-view">
+                <!-- Filters Card -->
+                <div class="card reports-filters-card" style="margin-bottom: 24px;">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-filter text-primary"></i> Report Filters</h3>
+                    </div>
+                    <div class="card-body" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; padding: 20px 24px;">
+                        <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                            <label for="report-start-date" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-secondary);">Start Date</label>
+                            <input type="date" id="report-start-date" style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(120, 120, 120, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); outline: none;">
+                        </div>
+                        <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                            <label for="report-end-date" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-secondary);">End Date</label>
+                            <input type="date" id="report-end-date" style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(120, 120, 120, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); outline: none;">
+                        </div>
+                        <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                            <label for="report-subject-select" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-secondary);">Subject</label>
+                            <select id="report-subject-select" style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(120, 120, 120, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); outline: none;">
+                                <option value="ALL">All Subjects</option>
+                                <option value="Physics">Physics</option>
+                                <option value="Chemistry">Chemistry</option>
+                                <option value="Mathematics">Mathematics</option>
+                                <option value="English">English</option>
+                                <option value="OTHER">Other/Custom</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-secondary" id="btn-reset-report-filters" style="height: 42px;">
+                            <i class="fa-solid fa-arrows-rotate"></i> Reset
+                        </button>
+                        <button class="btn btn-secondary" id="btn-export-excel" style="height: 42px; background-color: rgba(16, 185, 129, 0.1); color: var(--color-biology); border-color: rgba(16, 185, 129, 0.2);">
+                            <i class="fa-solid fa-file-excel"></i> Export Excel
+                        </button>
+                        <button class="btn btn-secondary" id="btn-export-pdf" style="height: 42px; background-color: rgba(239, 68, 68, 0.1); color: var(--color-math); border-color: rgba(239, 68, 68, 0.2);">
+                            <i class="fa-solid fa-file-pdf"></i> Export PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reports Metrics Grid -->
+                <div class="metrics-grid" style="margin-bottom: 24px;">
+                    <div class="card metric-card">
+                        <div class="card-body">
+                            <span class="card-label">Total Studied</span>
+                            <h2 class="metric-val" id="report-val-actual">0.0h</h2>
+                            <span class="card-subtext" id="report-val-actual-subtext">0 logs found</span>
+                        </div>
+                    </div>
+                    <div class="card metric-card">
+                        <div class="card-body">
+                            <span class="card-label">Target Schedule</span>
+                            <h2 class="metric-val" id="report-val-target">0.0h</h2>
+                            <span class="card-subtext" id="report-val-target-subtext">0 sessions found</span>
+                        </div>
+                    </div>
+                    <div class="card metric-card">
+                        <div class="card-body">
+                            <span class="card-label">Compliance Rate</span>
+                            <h2 class="metric-val" id="report-val-compliance">0%</h2>
+                            <span class="card-subtext" id="report-val-compliance-subtext">Target execution</span>
+                        </div>
+                    </div>
+                    <div class="card metric-card">
+                        <div class="card-body">
+                            <span class="card-label">Top Subject</span>
+                            <h2 class="metric-val" id="report-val-top-subject">None</h2>
+                            <span class="card-subtext" id="report-val-top-subject-time">0 mins logged</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports Detailed Lists -->
+                <div class="logs-layout-grid">
+                    <!-- Study Logs Report -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-receipt text-success"></i> Log Details</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="log-history-list" id="report-logs-container" style="max-height: 400px; overflow-y: auto;">
+                                <!-- Dynamic filtered list of study logs -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timetable Report -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-calendar-days text-primary"></i> Scheduled Sessions</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="log-history-list" id="report-timetable-container" style="max-height: 400px; overflow-y: auto;">
+                                <!-- Dynamic filtered list of scheduled sessions -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Admin Panel View -->
+            <section id="view-admin" class="content-view">
+                <div class="admin-grid">
+                    <!-- Registrations List -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-users-gear text-primary"></i> User Registrations & Admin Approvals</h3>
+                            <span class="badge" id="admin-pending-badge">0 pending</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="admin-table-wrapper" style="overflow-x: auto;">
+                                <table class="admin-users-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-size: 0.85rem;">
+                                            <th style="padding: 12px; font-family: var(--font-display); font-weight: 700;">Name</th>
+                                            <th style="padding: 12px; font-family: var(--font-display); font-weight: 700;">Class</th>
+                                            <th style="padding: 12px; font-family: var(--font-display); font-weight: 700;">Password</th>
+                                            <th style="padding: 12px; font-family: var(--font-display); font-weight: 700;">Role</th>
+                                            <th style="padding: 12px; font-family: var(--font-display); font-weight: 700;">Status</th>
+                                            <th style="padding: 12px; font-family: var(--font-display); font-weight: 700; text-align: right;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-users-list">
+                                        <!-- Dynamic users list loaded via JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reset Password Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-key text-warning"></i> Reset Admin Password</h3>
+                        </div>
+                        <div class="card-body">
+                            <form id="admin-reset-pass-form" class="vertical-form">
+                                <div class="form-group">
+                                    <label for="admin-curr-pass">Current Password</label>
+                                    <input type="password" id="admin-curr-pass" placeholder="••••••••" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="admin-new-pass">New Password</label>
+                                    <input type="password" id="admin-new-pass" placeholder="••••••••" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="admin-confirm-pass">Confirm New Password</label>
+                                    <input type="password" id="admin-confirm-pass" placeholder="••••••••" required>
+                                </div>
+                                <div id="admin-pass-error-msg" class="auth-error hide" style="color: var(--color-math); font-size: 0.8rem; font-weight: 500;"></div>
+                                <div id="admin-pass-success-msg" class="auth-success hide" style="color: var(--color-biology); font-size: 0.8rem; font-weight: 500;"></div>
+                                <button type="submit" class="btn btn-primary w-full">
+                                    <i class="fa-solid fa-lock-open"></i> Reset Password
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Reports Section -->
+                <div class="card" style="margin-top: 24px;">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-chart-pie text-success"></i> User-wise Reports & Analytics</h3>
+                    </div>
+                    <div class="card-body" style="padding: 24px;">
+                        <!-- Filters -->
+                        <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+                            <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                                <label for="admin-report-user-select" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-secondary);">Select User</label>
+                                <select id="admin-report-user-select" style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(120, 120, 120, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); outline: none;">
+                                    <option value="" disabled selected>Select a student</option>
+                                    <!-- Options populated via JS -->
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                                <label for="admin-report-start-date" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-secondary);">Start Date</label>
+                                <input type="date" id="admin-report-start-date" style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(120, 120, 120, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); outline: none;">
+                            </div>
+                            <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                                <label for="admin-report-end-date" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-secondary);">End Date</label>
+                                <input type="date" id="admin-report-end-date" style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(120, 120, 120, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); outline: none;">
+                            </div>
+                            <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                                <label for="admin-report-subject-select" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-secondary);">Subject</label>
+                                <select id="admin-report-subject-select" style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(120, 120, 120, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); outline: none;">
+                                    <option value="ALL">All Subjects</option>
+                                    <option value="Physics">Physics</option>
+                                    <option value="Chemistry">Chemistry</option>
+                                    <option value="Mathematics">Mathematics</option>
+                                    <option value="English">English</option>
+                                    <option value="OTHER">Other/Custom</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-secondary" id="btn-admin-reset-report-filters" style="height: 42px;">
+                                <i class="fa-solid fa-arrows-rotate"></i> Reset
+                            </button>
+                        </div>
+
+                        <!-- Empty selection state / metrics wrapper -->
+                        <div id="admin-report-placeholder" class="empty-state">
+                            <i class="fa-solid fa-chart-column" style="font-size: 2.5rem; margin-bottom: 12px; opacity: 0.5;"></i>
+                            <p>Please select a student above to load their reports and detailed logs.</p>
+                        </div>
+
+                        <div id="admin-report-results-wrapper" class="hide">
+                            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 16px;">
+                                <button class="btn btn-secondary" id="btn-admin-export-excel" style="height: 42px; background-color: rgba(16, 185, 129, 0.1); color: var(--color-biology); border-color: rgba(16, 185, 129, 0.2);">
+                                    <i class="fa-solid fa-file-excel"></i> Export Excel
+                                </button>
+                                <button class="btn btn-secondary" id="btn-admin-export-pdf" style="height: 42px; background-color: rgba(239, 68, 68, 0.1); color: var(--color-math); border-color: rgba(239, 68, 68, 0.2);">
+                                    <i class="fa-solid fa-file-pdf"></i> Export PDF
+                                </button>
+                            </div>
+                            <!-- Metrics -->
+                            <div class="metrics-grid" style="margin-bottom: 24px;">
+                                <div class="card metric-card">
+                                    <div class="card-body">
+                                        <span class="card-label">Total Studied</span>
+                                        <h2 class="metric-val" id="admin-report-val-actual">0.0h</h2>
+                                        <span class="card-subtext" id="admin-report-val-actual-subtext">0 logs found</span>
+                                    </div>
+                                </div>
+                                <div class="card metric-card">
+                                    <div class="card-body">
+                                        <span class="card-label">Target Schedule</span>
+                                        <h2 class="metric-val" id="admin-report-val-target">0.0h</h2>
+                                        <span class="card-subtext" id="admin-report-val-target-subtext">0 sessions found</span>
+                                    </div>
+                                </div>
+                                <div class="card metric-card">
+                                    <div class="card-body">
+                                        <span class="card-label">Compliance Rate</span>
+                                        <h2 class="metric-val" id="admin-report-val-compliance">0%</h2>
+                                        <span class="card-subtext" id="admin-report-val-compliance-subtext">Target execution</span>
+                                    </div>
+                                </div>
+                                <div class="card metric-card">
+                                    <div class="card-body">
+                                        <span class="card-label">Top Subject</span>
+                                        <h2 class="metric-val" id="admin-report-val-top-subject">None</h2>
+                                        <span class="card-subtext" id="admin-report-val-top-subject-time">0 mins logged</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tables/Listings -->
+                            <div class="logs-layout-grid">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3><i class="fa-solid fa-receipt text-success"></i> Log Details</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="log-history-list" id="admin-report-logs-container" style="max-height: 350px; overflow-y: auto;">
+                                            <!-- Dynamic study logs -->
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3><i class="fa-solid fa-calendar-days text-primary"></i> Scheduled Sessions</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="log-history-list" id="admin-report-timetable-container" style="max-height: 350px; overflow-y: auto;">
+                                            <!-- Dynamic timetable sessions -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Missed Schedules Section -->
+                            <div class="card" style="margin-top: 24px; border-left: 4px solid #ef4444;" id="admin-report-missed-wrapper">
+                                <div class="card-header" style="background: rgba(239, 68, 68, 0.05); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(239, 68, 68, 0.1);">
+                                    <h3 style="color: #ef4444; margin: 0; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-triangle-exclamation"></i> Missed Study Schedules</h3>
+                                    <span class="badge" id="admin-report-missed-badge" style="background-color: #ef4444; color: white; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">0 Missed</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="log-history-list" id="admin-report-missed-container" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 8px 0;">
+                                        <!-- Dynamic missed schedules -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Contact View -->
+            <section id="view-contact" class="content-view">
+                <div class="contact-container" style="display: flex; align-items: center; justify-content: center; min-height: 480px; perspective: 1000px; padding: 20px;">
+                    <div class="card contact-card float-3d" style="padding: 40px; border-radius: 24px; text-align: center; max-width: 450px; width: 100%; border: 1px solid var(--border-color); transform-style: preserve-3d; background: var(--bg-card-glass, rgba(15, 20, 35, 0.45)); backdrop-filter: blur(20px);">
+                        <div class="contact-icon-wrapper" style="transform: translateZ(50px); margin-bottom: 24px;">
+                            <div class="logo-icon" style="margin: 0 auto; width: 60px; height: 60px; font-size: 1.75rem; background: linear-gradient(135deg, var(--accent-primary) 0%, #a855f7 100%); display: flex; align-items: center; justify-content: center; border-radius: 18px; box-shadow: 0 10px 25px rgba(99, 102, 241, 0.35); color: white;"><i class="fa-solid fa-envelope"></i></div>
+                        </div>
+                        
+                        <h2 class="contact-3d-text" style="font-family: var(--font-display); font-size: 2.2rem; font-weight: 800; margin-bottom: 16px; color: var(--text-primary); text-transform: uppercase; transform: translateZ(40px); letter-spacing: -1px; text-shadow: 0 1px 0 #ccc, 0 2px 0 #c5c5c5, 0 3px 0 #bbb, 0 4px 0 #b0b0b0, 0 5px 0 #a5a5a5, 0 6px 1px rgba(0,0,0,.1), 0 0 5px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,.3), 0 3px 5px rgba(0,0,0,.2), 0 5px 10px rgba(0,0,0,.25), 0 10px 10px rgba(0,0,0,.2), 0 20px 20px rgba(0,0,0,.15);">Ashish Dey</h2>
+                        
+                        <div class="contact-details" style="transform: translateZ(30px); display: flex; flex-direction: column; gap: 16px; margin-top: 24px; text-align: left;">
+                            <div style="display: flex; align-items: center; gap: 14px; font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                                <i class="fa-solid fa-user-tie text-primary" style="width: 24px; font-size: 1.25rem;"></i>
+                                <div>
+                                    <span class="text-secondary" style="font-size: 0.75rem; display: block; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Designation</span>
+                                    <span style="font-weight: 600; color: var(--text-primary);">CEO JP Katekalyan</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 14px; font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                                <i class="fa-solid fa-phone text-primary" style="width: 24px; font-size: 1.25rem;"></i>
+                                <div>
+                                    <span class="text-secondary" style="font-size: 0.75rem; display: block; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Mobile Number</span>
+                                    <span style="font-weight: 600; color: var(--text-primary);">9244249975</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 14px; font-size: 1rem; padding-bottom: 4px;">
+                                <i class="fa-solid fa-location-dot text-primary" style="width: 24px; font-size: 1.25rem;"></i>
+                                <div>
+                                    <span class="text-secondary" style="font-size: 0.75rem; display: block; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Address</span>
+                                    <span style="font-weight: 600; color: var(--text-primary);">Albelapara Kanker(C.G.)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+
+    <!-- Schedule Session Modal (Timetable CRUD) -->
+    <div class="modal-backdrop" id="schedule-modal">
+        <div class="modal-card card">
+            <div class="modal-header">
+                <h3 id="schedule-modal-title">Add Timetable Session</h3>
+                <button class="btn-close-modal" id="btn-close-schedule-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="schedule-session-form" class="vertical-form">
+                    <input type="hidden" id="schedule-id">
+                    
+                    <div class="form-group">
+                        <label for="schedule-date">Session Date</label>
+                        <input type="date" id="schedule-date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Subject</label>
+                        <select id="schedule-subject-select" required>
+                            <option value="" disabled selected>Select Subject</option>
+                            <option value="Physics">Physics</option>
+                            <option value="Chemistry">Chemistry</option>
+                            <option value="Mathematics">Mathematics</option>
+                            <option value="English">English</option>
+                        </select>
+                        <input type="text" id="schedule-subject-input" placeholder="Type Subject Name" class="hide">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="schedule-start-time">Start Time</label>
+                            <input type="time" id="schedule-start-time" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="schedule-end-time">End Time</label>
+                            <input type="time" id="schedule-end-time" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Color Tag</label>
+                        <div class="color-picker-grid">
+                            <label class="color-radio-label">
+                                <input type="radio" name="schedule-color" value="physics-blue" checked>
+                                <span class="color-radio-dot physics-blue"></span>
+                            </label>
+                            <label class="color-radio-label">
+                                <input type="radio" name="schedule-color" value="chemistry-purple">
+                                <span class="color-radio-dot chemistry-purple"></span>
+                            </label>
+                            <label class="color-radio-label">
+                                <input type="radio" name="schedule-color" value="math-red">
+                                <span class="color-radio-dot math-red"></span>
+                            </label>
+                            <label class="color-radio-label">
+                                <input type="radio" name="schedule-color" value="biology-green">
+                                <span class="color-radio-dot biology-green"></span>
+                            </label>
+                            <label class="color-radio-label">
+                                <input type="radio" name="schedule-color" value="english-yellow">
+                                <span class="color-radio-dot english-yellow"></span>
+                            </label>
+                            <label class="color-radio-label">
+                                <input type="radio" name="schedule-color" value="other-gray">
+                                <span class="color-radio-dot other-gray"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="schedule-lesson">Lesson / Topic Name</label>
+                        <input type="text" id="schedule-lesson" placeholder="e.g. Laws of Motion, Alkene Hybridization" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="schedule-notes">Notes / Planned Exercises</label>
+                        <input type="text" id="schedule-notes" placeholder="e.g. Read Chapter 5 and do practice exercises">
+                    </div>
+
+                    <div class="form-buttons-row">
+                        <button type="button" class="btn btn-secondary" id="btn-cancel-schedule">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Session</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Authentication Overlay Gateway -->
+    <div class="auth-overlay" id="auth-gateway">
+        <div class="auth-card card">
+            <!-- Login Form Box -->
+            <div class="form-box login">
+                <div class="auth-header">
+                    <div class="auth-logo">
+                        <div class="logo-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+                        <span>Time Table Tracker</span>
+                    </div>
+                    <p class="auth-subtitle">Login to access your study desk</p>
+                </div>
+                <form id="auth-login-form" class="vertical-form">
+                    <div class="form-group">
+                        <label for="login-name">Name</label>
+                        <input type="text" id="login-name" placeholder="Enter your username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" placeholder="••••••••" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-class">Class</label>
+                        <select id="login-class" required>
+                            <option value="" disabled selected>Select Class</option>
+                            <option value="5th">5th</option>
+                            <option value="6th">6th</option>
+                            <option value="7th">7th</option>
+                            <option value="8th">8th</option>
+                            <option value="9th">9th</option>
+                            <option value="10th">10th</option>
+                            <option value="11th">11th</option>
+                            <option value="12th">12th</option>
+                            <option value="Admin">Admin (Staff)</option>
+                        </select>
+                    </div>
+                    <div id="login-error-msg" class="auth-error hide" style="color: var(--color-math); font-size: 0.8rem; font-weight: 500;"></div>
+                    <button type="submit" class="btn btn-primary w-full" style="margin-top: 8px;">
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i> Enter Desk
+                    </button>
+                    <div class="auth-toggle-msg" style="text-align: center; margin-top: 16px; font-size: 0.85rem; color: var(--text-secondary);">
+                        Don't have an account? <a href="#" class="register-link" style="color: var(--accent-primary); font-weight: 600; text-decoration: none;">Register</a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Register Form Box -->
+            <div class="form-box register">
+                <div class="auth-header">
+                    <div class="auth-logo">
+                        <div class="logo-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+                        <span>Time Table Tracker</span>
+                    </div>
+                    <p class="auth-subtitle">Register a new student account</p>
+                </div>
+                <form id="auth-register-form" class="vertical-form">
+                    <div class="form-group">
+                        <label for="register-name">Name</label>
+                        <input type="text" id="register-name" placeholder="Choose a username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-class">Class</label>
+                        <select id="register-class" required>
+                            <option value="" disabled selected>Select Class</option>
+                            <option value="5th">5th</option>
+                            <option value="6th">6th</option>
+                            <option value="7th">7th</option>
+                            <option value="8th">8th</option>
+                            <option value="9th">9th</option>
+                            <option value="10th">10th</option>
+                            <option value="11th">11th</option>
+                            <option value="12th">12th</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Password</label>
+                        <input type="password" id="register-password" placeholder="Choose a password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-confirm-password">Confirm Password</label>
+                        <input type="password" id="register-confirm-password" placeholder="Confirm your password" required>
+                    </div>
+                    <div id="register-error-msg" class="auth-error hide" style="color: var(--color-math); font-size: 0.8rem; font-weight: 500;"></div>
+                    <div id="register-success-msg" class="auth-success hide" style="color: var(--color-biology); font-size: 0.8rem; font-weight: 500;"></div>
+                    <button type="submit" class="btn btn-primary w-full" style="margin-top: 8px;">
+                        <i class="fa-solid fa-user-plus"></i> Submit Registration
+                    </button>
+                    <div class="auth-toggle-msg" style="text-align: center; margin-top: 16px; font-size: 0.85rem; color: var(--text-secondary);">
+                        Already have an account? <a href="#" class="login-link" style="color: var(--accent-primary); font-weight: 600; text-decoration: none;">Login</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- External Libraries for Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- Main JavaScript Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
