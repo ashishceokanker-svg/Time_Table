@@ -4,6 +4,11 @@ const path = require('path');
 
 const LOCAL_DB_PATH = path.join(process.cwd(), 'local_db.json');
 
+if (!process.env.POSTGRES_URL) {
+    const k = Object.keys(process.env).find(x => x.endsWith('_POSTGRES_URL'));
+    if (k) process.env.POSTGRES_URL = process.env[k];
+}
+
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
