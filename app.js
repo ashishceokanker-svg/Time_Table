@@ -258,9 +258,12 @@ async function saveToDatabase(key, data) {
         if (!response.ok) {
             const errBody = await response.json().catch(() => ({}));
             console.error(`Failed to save ${key} to cloud database:`, errBody.error || response.statusText);
+            return false;
         }
+        return true;
     } catch (error) {
         console.error(`Network error saving ${key} to cloud database:`, error);
+        return false;
     }
 }
 
@@ -641,7 +644,22 @@ function setupAuthEvents() {
         };
 
         AppState.users.push(newUser);
-        saveToLocalStorage('users');
+
+        // Await saveToDatabase to ensure the user is registered in the cloud database.
+        const success = await saveToDatabase('users', AppState.users);
+        if (!success) {
+            AppState.users.pop(); // rollback
+            errorDiv.textContent = "Error: Failed to save registration to server database. Please try again.";
+            errorDiv.classList.remove('hide');
+            return;
+        }
+
+        // Save locally to localStorage now that backend sync was successful
+        try {
+            localStorage.setItem('anti_gravity_users', JSON.stringify(AppState.users));
+        } catch (e) {
+            console.warn("Storage quota warning for users:", e);
+        }
 
         successDiv.textContent = "Registration submitted! Your account is pending administrator approval.";
         successDiv.classList.remove('hide');

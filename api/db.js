@@ -42,12 +42,10 @@ module.exports = async (req, res) => {
                     const us = await c.query('SELECT * FROM users');
                     const tt = await c.query('SELECT * FROM timetable');
                     const lg = await c.query('SELECT * FROM logs');
-                    const schemaInfo = await c.query("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'users'");
                     res.status(200).json({
                         users: us.rows.map(r => ({ username: r.username, passwordHash: r.password_hash, classGrade: r.class_grade, role: r.role, status: r.status, profilePhoto: r.profile_photo })),
                         timetable: tt.rows.map(r => ({ id: r.id, username: r.username, day: r.day, date: r.date, subject: r.subject, startTime: r.start_time, endTime: r.end_time, lesson: r.lesson, color: r.color, notes: r.notes })),
-                        logs: lg.rows.map(r => ({ id: r.id, username: r.username, date: r.date, subject: r.subject, duration: r.duration, topic: r.topic, notes: r.notes })),
-                        schema: schemaInfo.rows
+                        logs: lg.rows.map(r => ({ id: r.id, username: r.username, date: r.date, subject: r.subject, duration: r.duration, topic: r.topic, notes: r.notes }))
                     });
                 } finally {
                     await c.end();
@@ -71,6 +69,7 @@ module.exports = async (req, res) => {
                     await c.query('BEGIN');
                     try {
                         if (key === 'users') {
+                            const usernames = data.map(u => u.username);
                             for (const u of data) {
                                 if (u.profilePhoto && u.profilePhoto.startsWith('data:')) {
                                     const base64Content = u.profilePhoto.split('base64,')[1] || '';
@@ -80,12 +79,34 @@ module.exports = async (req, res) => {
                                     }
                                 }
                             }
-                            await c.query('DELETE FROM users');
-                            for (const u of data) await c.query('INSERT INTO users VALUES ($1, $2, $3, $4, $5, $6)', [u.username, u.passwordHash, u.classGrade, u.role, u.status, u.profilePhoto || null]);
+                            for (const u of data) {
+                                await c.query(`
+                                    INSERT INTO users (username, password_hash, class_grade, role, status, profile_photo) 
+                                    VALUES ($1, $2, $3, $4, $5, $6) 
+                                    ON CONFLICT (username) 
+                                    DO UPDATE SET password_hash = EXCLUDED.password_hash, class_grade = EXCLUDED.class_grade, role = EXCLUDED.role, status = EXCLUDED.status, profile_photo = EXCLUDED.profile_photo
+                                `, [u.username, u.passwordHash, u.classGrade, u.role, u.status, u.profilePhoto || null]);
+                            }
+                            if (usernames.length > 0) {
+                                await c.query("DELETE FROM users WHERE username NOT IN (SELECT unnest($1::varchar[])) AND username != 'admin'", [usernames]);
+                            }
                         } else if (key === 'timetable') {
-                            await c.query('DELETE FROM timetable');
-                            for (const t of data) await c.query('INSERT INTO timetable VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)', [t.id, t.username, t.day, t.date, t.subject, t.startTime, t.endTime, t.lesson, t.color, t.notes]);
+                            const ids = data.map(t => t.id);
+                            for (const t of data) {
+                                await c.query(`
+                                    INSERT INTO timetable (id, username, day, date, subject, start_time, end_time, lesson, color, notes) 
+                                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+                                    ON CONFLICT (id) 
+                                    DO UPDATE SET username = EXCLUDED.username, day = EXCLUDED.day, date = EXCLUDED.date, subject = EXCLUDED.subject, start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time, lesson = EXCLUDED.lesson, color = EXCLUDED.color, notes = EXCLUDED.notes
+                                `, [t.id, t.username, t.day, t.date, t.subject, t.startTime, t.endTime, t.lesson, t.color, t.notes]);
+                            }
+                            if (ids.length > 0) {
+                                await c.query("DELETE FROM timetable WHERE id NOT IN (SELECT unnest($1::varchar[]))", [ids]);
+                            } else {
+                                await c.query("DELETE FROM timetable");
+                            }
                         } else if (key === 'logs') {
+                            const ids = data.map(l => l.id);
                             const existingLogsResult = await c.query('SELECT id, date FROM logs');
                             const existingIds = new Set(existingLogsResult.rows.map(r => r.id));
 
@@ -100,8 +121,19 @@ module.exports = async (req, res) => {
                                 }
                             }
 
-                            await c.query('DELETE FROM logs');
-                            for (const l of data) await c.query('INSERT INTO logs VALUES ($1, $2, $3, $4, $5, $6, $7)', [l.id, l.username, l.date, l.subject, l.duration, l.topic, l.notes]);
+                            for (const l of data) {
+                                await c.query(`
+                                    INSERT INTO logs (id, username, date, subject, duration, topic, notes) 
+                                    VALUES ($1, $2, $3, $4, $5, $6, $7) 
+                                    ON CONFLICT (id) 
+                                    DO UPDATE SET username = EXCLUDED.username, date = EXCLUDED.date, subject = EXCLUDED.subject, duration = EXCLUDED.duration, topic = EXCLUDED.topic, notes = EXCLUDED.notes
+                                `, [l.id, l.username, l.date, l.subject, l.duration, l.topic, l.notes]);
+                            }
+                            if (ids.length > 0) {
+                                await c.query("DELETE FROM logs WHERE id NOT IN (SELECT unnest($1::varchar[]))", [ids]);
+                            } else {
+                                await c.query("DELETE FROM logs");
+                            }
                         }
                         await c.query('COMMIT');
                     } catch (e) {
