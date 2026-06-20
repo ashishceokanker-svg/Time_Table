@@ -173,8 +173,15 @@ function initApp() {
     updateThemeToggleUI();
     updateDashboardThemeButtonsUI();
 
-    // 5. Set default log form date to today
-    document.getElementById('log-date').value = new Date().toISOString().split('T')[0];
+    // 5. Set default log form date to today and restrict selection to today only
+    const d = new Date();
+    const todayVal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const logDateInput = document.getElementById('log-date');
+    if (logDateInput) {
+        logDateInput.value = todayVal;
+        logDateInput.min = todayVal;
+        logDateInput.max = todayVal;
+    }
     document.getElementById('filter-log-month').value = new Date().toISOString().slice(0, 7);
 
     // 6. Update Current Date Display in Header
@@ -1994,6 +2001,12 @@ function handleLogFormSubmit(e) {
     e.preventDefault();
 
     const date = document.getElementById('log-date').value;
+    const d = new Date();
+    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (date !== todayStr) {
+        alert("Error: You can only log study hours for the current active day (today)!");
+        return;
+    }
     const subject = document.getElementById('log-subject-select').value;
     const duration = parseInt(document.getElementById('log-duration').value);
     const topic = document.getElementById('log-topic').value;

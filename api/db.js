@@ -74,6 +74,20 @@ module.exports = async (req, res) => {
                             await c.query('DELETE FROM timetable');
                             for (const t of data) await c.query('INSERT INTO timetable VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)', [t.id, t.username, t.day, t.date, t.subject, t.startTime, t.endTime, t.lesson, t.color, t.notes]);
                         } else if (key === 'logs') {
+                            const existingLogsResult = await c.query('SELECT id, date FROM logs');
+                            const existingIds = new Set(existingLogsResult.rows.map(r => r.id));
+
+                            const todayIndia = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+                            const todayStr = `${todayIndia.getFullYear()}-${String(todayIndia.getMonth() + 1).padStart(2, '0')}-${String(todayIndia.getDate()).padStart(2, '0')}`;
+                            
+                            for (const l of data) {
+                                if (!existingIds.has(l.id)) {
+                                    if (l.date < todayStr) {
+                                        throw new Error(`Validation Error: You cannot save new logs for past dates! (${l.date} is in the past)`);
+                                    }
+                                }
+                            }
+
                             await c.query('DELETE FROM logs');
                             for (const l of data) await c.query('INSERT INTO logs VALUES ($1, $2, $3, $4, $5, $6, $7)', [l.id, l.username, l.date, l.subject, l.duration, l.topic, l.notes]);
                         }
