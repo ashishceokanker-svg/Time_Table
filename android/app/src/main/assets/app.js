@@ -661,8 +661,16 @@ function setupAuthEvents() {
             console.warn("Storage quota warning for users:", e);
         }
 
-        successDiv.textContent = "Registration submitted! Your account is pending administrator approval.";
+        successDiv.innerHTML = `Registration submitted! Your account is pending administrator approval. <a href="#" id="success-login-link" style="color: var(--accent-primary); font-weight: 700; text-decoration: underline; margin-left: 5px;">Click here to Login</a>`;
         successDiv.classList.remove('hide');
+
+        const successLink = document.getElementById('success-login-link');
+        if (successLink) {
+            successLink.addEventListener('click', (event) => {
+                event.preventDefault();
+                card.classList.remove('active');
+            });
+        }
 
         // Reset form
         registerForm.reset();
