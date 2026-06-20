@@ -725,9 +725,13 @@ function switchView(viewName) {
     } else if (viewName === 'logs') {
         renderLogsView();
     } else if (viewName === 'reports') {
-        renderReportsView();
+        loadDatabase().then(() => {
+            renderReportsView();
+        });
     } else if (viewName === 'admin') {
-        renderAdminView();
+        loadDatabase().then(() => {
+            renderAdminView();
+        });
     }
 }
 
