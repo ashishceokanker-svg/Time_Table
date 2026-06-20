@@ -1,5 +1,22 @@
 {
-  "users": [],
+  "users": [
+    {
+      "username": "admin",
+      "passwordHash": "admin",
+      "classGrade": "Admin",
+      "role": "admin",
+      "status": "approved",
+      "profilePhoto": null
+    },
+    {
+      "username": "local_alice",
+      "passwordHash": "password",
+      "classGrade": "11th",
+      "role": "student",
+      "status": "pending",
+      "profilePhoto": ""
+    }
+  ],
   "timetable": [],
   "logs": []
 }

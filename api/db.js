@@ -42,10 +42,12 @@ module.exports = async (req, res) => {
                     const us = await c.query('SELECT * FROM users');
                     const tt = await c.query('SELECT * FROM timetable');
                     const lg = await c.query('SELECT * FROM logs');
+                    const schemaInfo = await c.query("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'users'");
                     res.status(200).json({
                         users: us.rows.map(r => ({ username: r.username, passwordHash: r.password_hash, classGrade: r.class_grade, role: r.role, status: r.status, profilePhoto: r.profile_photo })),
                         timetable: tt.rows.map(r => ({ id: r.id, username: r.username, day: r.day, date: r.date, subject: r.subject, startTime: r.start_time, endTime: r.end_time, lesson: r.lesson, color: r.color, notes: r.notes })),
-                        logs: lg.rows.map(r => ({ id: r.id, username: r.username, date: r.date, subject: r.subject, duration: r.duration, topic: r.topic, notes: r.notes }))
+                        logs: lg.rows.map(r => ({ id: r.id, username: r.username, date: r.date, subject: r.subject, duration: r.duration, topic: r.topic, notes: r.notes })),
+                        schema: schemaInfo.rows
                     });
                 } finally {
                     await c.end();
