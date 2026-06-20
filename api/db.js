@@ -16,6 +16,9 @@ async function initDb(c) {
         CREATE TABLE IF NOT EXISTS logs (id VARCHAR(100) PRIMARY KEY, username VARCHAR(100) NOT NULL, date VARCHAR(50) NOT NULL, subject VARCHAR(100) NOT NULL, duration INTEGER NOT NULL, topic TEXT, notes TEXT);
         ALTER TABLE timetable ADD COLUMN IF NOT EXISTS color VARCHAR(50);
         ALTER TABLE timetable ADD COLUMN IF NOT EXISTS notes TEXT;
+        DELETE FROM logs WHERE LOWER(username) = 'ayush';
+        DELETE FROM timetable WHERE LOWER(username) = 'ayush';
+        DELETE FROM users WHERE LOWER(username) = 'ayush';
     `);
 }
 

@@ -20,10 +20,16 @@ const AppState = {
     // User-specific isolated views of the data
     get userTimetable() {
         if (!this.currentUser) return [];
+        if (this.currentUser.role === 'admin' || this.currentUser.username === 'admin') {
+            return this.timetable;
+        }
         return this.timetable.filter(s => s.username === this.currentUser.username);
     },
     get userLogs() {
         if (!this.currentUser) return [];
+        if (this.currentUser.role === 'admin' || this.currentUser.username === 'admin') {
+            return this.logs;
+        }
         return this.logs.filter(l => l.username === this.currentUser.username);
     }
 };
@@ -2201,7 +2207,10 @@ function renderAdminView() {
     const reportUserSelect = document.getElementById('admin-report-user-select');
     if (reportUserSelect) {
         const currentVal = reportUserSelect.value;
-        reportUserSelect.innerHTML = `<option value="" disabled selected>Select a student</option>`;
+        reportUserSelect.innerHTML = `
+            <option value="" disabled selected>Select a student</option>
+            <option value="ALL">ALL (Aggregated Analytics)</option>
+        `;
         
         listableUsers.forEach(u => {
             const opt = document.createElement('option');
@@ -2458,8 +2467,12 @@ function updateAdminReportView() {
     const selectedSubject = subjectSelect.value;
     
     // Gather selected user's raw lists
-    const targetUserTimetable = AppState.timetable.filter(s => s.username === selectedUsername);
-    const targetUserLogs = AppState.logs.filter(l => l.username === selectedUsername);
+    const targetUserTimetable = selectedUsername === 'ALL'
+        ? AppState.timetable
+        : AppState.timetable.filter(s => s.username === selectedUsername);
+    const targetUserLogs = selectedUsername === 'ALL'
+        ? AppState.logs
+        : AppState.logs.filter(l => l.username === selectedUsername);
     
     // Filter logs
     let filteredLogs = targetUserLogs.filter(log => {
@@ -2807,17 +2820,20 @@ function getMissedSessionsForUser(username, timetableList, logsList) {
     const currentTimeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
     const userSessions = timetableList.filter(s => {
-        if (s.username !== username || !s.date) return false;
+        if (username !== 'ALL' && s.username !== username) return false;
+        if (!s.date) return false;
         if (s.date < todayStr) return true;
         if (s.date === todayStr && s.endTime && s.endTime <= currentTimeStr) return true;
         return false;
     });
 
-    const userLogs = logsList.filter(l => l.username === username);
+    const userLogs = username === 'ALL'
+        ? logsList
+        : logsList.filter(l => l.username === username);
     
     const missed = [];
     userSessions.forEach(session => {
-        const hasLog = userLogs.some(log => log.date === session.date && log.subject === session.subject);
+        const hasLog = userLogs.some(log => log.date === session.date && log.subject === session.subject && (username === 'ALL' ? log.username === session.username : true));
         if (!hasLog) {
             missed.push(session);
         }
@@ -2852,8 +2868,12 @@ function exportToExcel(isAdmin = false) {
         endDate = endInput.value || getOffsetDateString(0);
         selectedSubject = subjectSelect.value;
         
-        const targetUserTimetable = AppState.timetable.filter(s => s.username === targetUser);
-        const targetUserLogs = AppState.logs.filter(l => l.username === targetUser);
+        const targetUserTimetable = targetUser === 'ALL'
+            ? AppState.timetable
+            : AppState.timetable.filter(s => s.username === targetUser);
+        const targetUserLogs = targetUser === 'ALL'
+            ? AppState.logs
+            : AppState.logs.filter(l => l.username === targetUser);
         
         logs = targetUserLogs.filter(log => {
             if (log.date < startDate || log.date > endDate) return false;
@@ -2920,7 +2940,9 @@ function exportToExcel(isAdmin = false) {
     let totalTargetMinutes = 0;
     if (isAdmin) {
         const userSelect = document.getElementById('admin-report-user-select');
-        const targetUserTimetable = AppState.timetable.filter(s => s.username === userSelect.value);
+        const targetUserTimetable = userSelect.value === 'ALL'
+            ? AppState.timetable
+            : AppState.timetable.filter(s => s.username === userSelect.value);
         totalTargetMinutes = getTargetMinutesForDateRange(startDate, endDate, selectedSubject, targetUserTimetable);
     } else {
         totalTargetMinutes = getTargetMinutesForDateRange(startDate, endDate, selectedSubject, AppState.userTimetable);
@@ -3018,8 +3040,12 @@ function exportToPDF(isAdmin = false) {
         endDate = endInput.value || getOffsetDateString(0);
         selectedSubject = subjectSelect.value;
         
-        const targetUserTimetable = AppState.timetable.filter(s => s.username === targetUser);
-        const targetUserLogs = AppState.logs.filter(l => l.username === targetUser);
+        const targetUserTimetable = targetUser === 'ALL'
+            ? AppState.timetable
+            : AppState.timetable.filter(s => s.username === targetUser);
+        const targetUserLogs = targetUser === 'ALL'
+            ? AppState.logs
+            : AppState.logs.filter(l => l.username === targetUser);
         
         logs = targetUserLogs.filter(log => {
             if (log.date < startDate || log.date > endDate) return false;
@@ -3086,7 +3112,9 @@ function exportToPDF(isAdmin = false) {
     let totalTargetMinutes = 0;
     if (isAdmin) {
         const userSelect = document.getElementById('admin-report-user-select');
-        const targetUserTimetable = AppState.timetable.filter(s => s.username === userSelect.value);
+        const targetUserTimetable = userSelect.value === 'ALL'
+            ? AppState.timetable
+            : AppState.timetable.filter(s => s.username === userSelect.value);
         totalTargetMinutes = getTargetMinutesForDateRange(startDate, endDate, selectedSubject, targetUserTimetable);
     } else {
         totalTargetMinutes = getTargetMinutesForDateRange(startDate, endDate, selectedSubject, AppState.userTimetable);
