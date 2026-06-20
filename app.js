@@ -2798,8 +2798,17 @@ function handleLogTopicChange() {
 }
 
 function getMissedSessionsForUser(username, timetableList, logsList) {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const userSessions = timetableList.filter(s => s.username === username && s.date && s.date < todayStr);
+    const d = new Date();
+    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const currentTimeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+    const userSessions = timetableList.filter(s => {
+        if (s.username !== username || !s.date) return false;
+        if (s.date < todayStr) return true;
+        if (s.date === todayStr && s.endTime && s.endTime <= currentTimeStr) return true;
+        return false;
+    });
+
     const userLogs = logsList.filter(l => l.username === username);
     
     const missed = [];
