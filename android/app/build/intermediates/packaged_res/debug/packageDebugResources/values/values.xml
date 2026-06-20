@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent_primary">#818CF8</color>
+    <color name="bg_dark">#090D16</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <string name="app_name">Time Table Tracker</string>
+    <style name="Theme.TimeTableTracker" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        
+        <item name="colorPrimary">@color/accent_primary</item>
+        <item name="colorPrimaryVariant">#4F46E5</item>
+        <item name="colorOnPrimary">@color/white</item>
+        
+        <item name="colorSecondary">#A855F7</item>
+        <item name="colorSecondaryVariant">#7E22CE</item>
+        <item name="colorOnSecondary">@color/white</item>
+        
+        <item name="android:statusBarColor">@color/bg_dark</item>
+        
+    </style>
+    <style name="Theme.TimeTableTracker.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+</resources>

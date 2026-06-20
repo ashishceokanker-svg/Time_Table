@@ -1,0 +1,14 @@
+R_DEF: Internal format may change without notice
+local
+color accent_primary
+color bg_dark
+color black
+color white
+drawable ic_launcher
+id loadingProgressBar
+id webview
+layout activity_main
+layout activity_splash
+string app_name
+style Theme.TimeTableTracker
+style Theme.TimeTableTracker.NoActionBar

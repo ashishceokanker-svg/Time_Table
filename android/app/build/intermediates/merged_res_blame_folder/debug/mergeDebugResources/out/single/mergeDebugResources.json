@@ -1,0 +1,14 @@
+[
+    {
+        "merged": "C:\\Users\\user\\.gradle\\daemon\\8.13\\com.timetable.tracker.app-debug-31:\\layout_activity_main.xml.flat",
+        "source": "C:\\Users\\user\\.gradle\\daemon\\8.13\\com.timetable.tracker.app-main-33:\\layout\\activity_main.xml"
+    },
+    {
+        "merged": "com.timetable.tracker.app-debug-31:/drawable_ic_launcher.png.flat",
+        "source": "com.timetable.tracker.app-main-33:/drawable/ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\user\\.gradle\\daemon\\8.13\\com.timetable.tracker.app-debug-31:\\layout_activity_splash.xml.flat",
+        "source": "C:\\Users\\user\\.gradle\\daemon\\8.13\\com.timetable.tracker.app-main-33:\\layout\\activity_splash.xml"
+    }
+]

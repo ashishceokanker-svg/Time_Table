@@ -11,11 +11,12 @@ const LOCAL_DB_PATH = path.join(process.cwd(), 'local_db.json');
 
 async function initDb(c) {
     await c.query(`
-        CREATE TABLE IF NOT EXISTS users (username VARCHAR(100) PRIMARY KEY, password_hash TEXT NOT NULL, class_grade VARCHAR(50) NOT NULL, role VARCHAR(50) NOT NULL, status VARCHAR(50) NOT NULL);
+        CREATE TABLE IF NOT EXISTS users (username VARCHAR(100) PRIMARY KEY, password_hash TEXT NOT NULL, class_grade VARCHAR(50) NOT NULL, role VARCHAR(50) NOT NULL, status VARCHAR(50) NOT NULL, profile_photo TEXT);
         CREATE TABLE IF NOT EXISTS timetable (id VARCHAR(100) PRIMARY KEY, username VARCHAR(100) NOT NULL, day INTEGER NOT NULL, date VARCHAR(50), subject VARCHAR(100) NOT NULL, start_time VARCHAR(10) NOT NULL, end_time VARCHAR(10) NOT NULL, lesson TEXT, color VARCHAR(50), notes TEXT);
         CREATE TABLE IF NOT EXISTS logs (id VARCHAR(100) PRIMARY KEY, username VARCHAR(100) NOT NULL, date VARCHAR(50) NOT NULL, subject VARCHAR(100) NOT NULL, duration INTEGER NOT NULL, topic TEXT, notes TEXT);
         ALTER TABLE timetable ADD COLUMN IF NOT EXISTS color VARCHAR(50);
         ALTER TABLE timetable ADD COLUMN IF NOT EXISTS notes TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo TEXT;
         DELETE FROM logs WHERE LOWER(username) = 'ayush';
         DELETE FROM timetable WHERE LOWER(username) = 'ayush';
         DELETE FROM users WHERE LOWER(username) = 'ayush';
@@ -42,7 +43,7 @@ module.exports = async (req, res) => {
                     const tt = await c.query('SELECT * FROM timetable');
                     const lg = await c.query('SELECT * FROM logs');
                     res.status(200).json({
-                        users: us.rows.map(r => ({ username: r.username, passwordHash: r.password_hash, classGrade: r.class_grade, role: r.role, status: r.status })),
+                        users: us.rows.map(r => ({ username: r.username, passwordHash: r.password_hash, classGrade: r.class_grade, role: r.role, status: r.status, profilePhoto: r.profile_photo })),
                         timetable: tt.rows.map(r => ({ id: r.id, username: r.username, day: r.day, date: r.date, subject: r.subject, startTime: r.start_time, endTime: r.end_time, lesson: r.lesson, color: r.color, notes: r.notes })),
                         logs: lg.rows.map(r => ({ id: r.id, username: r.username, date: r.date, subject: r.subject, duration: r.duration, topic: r.topic, notes: r.notes }))
                     });
@@ -69,7 +70,7 @@ module.exports = async (req, res) => {
                     try {
                         if (key === 'users') {
                             await c.query('DELETE FROM users');
-                            for (const u of data) await c.query('INSERT INTO users VALUES ($1, $2, $3, $4, $5)', [u.username, u.passwordHash, u.classGrade, u.role, u.status]);
+                            for (const u of data) await c.query('INSERT INTO users VALUES ($1, $2, $3, $4, $5, $6)', [u.username, u.passwordHash, u.classGrade, u.role, u.status, u.profilePhoto || null]);
                         } else if (key === 'timetable') {
                             await c.query('DELETE FROM timetable');
                             for (const t of data) await c.query('INSERT INTO timetable VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)', [t.id, t.username, t.day, t.date, t.subject, t.startTime, t.endTime, t.lesson, t.color, t.notes]);
