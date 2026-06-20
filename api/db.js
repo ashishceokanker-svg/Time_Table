@@ -88,6 +88,9 @@ module.exports = async (req, res) => {
                                 `, [u.username, u.passwordHash, u.classGrade, u.role, u.status, u.profilePhoto || null]);
                             }
                             if (usernames.length > 0) {
+                                // Programmatically cascade delete associated timetable sessions and study logs first
+                                await c.query("DELETE FROM timetable WHERE username NOT IN (SELECT unnest($1::varchar[])) AND username != 'admin'", [usernames]);
+                                await c.query("DELETE FROM logs WHERE username NOT IN (SELECT unnest($1::varchar[])) AND username != 'admin'", [usernames]);
                                 await c.query("DELETE FROM users WHERE username NOT IN (SELECT unnest($1::varchar[])) AND username != 'admin'", [usernames]);
                             }
                         } else if (key === 'timetable') {

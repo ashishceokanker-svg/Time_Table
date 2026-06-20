@@ -2402,8 +2402,18 @@ function toggleUserStatus(username, newStatus) {
 
 function deleteUser(username) {
     if (confirm("Are you sure you want to permanently delete this user?")) {
+        // 1. Delete user
         AppState.users = AppState.users.filter(u => u.username !== username);
         saveToLocalStorage('users');
+
+        // 2. Cascade delete associated timetable entries
+        AppState.timetable = AppState.timetable.filter(t => t.username !== username);
+        saveToLocalStorage('timetable');
+
+        // 3. Cascade delete associated activity logs
+        AppState.logs = AppState.logs.filter(l => l.username !== username);
+        saveToLocalStorage('logs');
+
         renderAdminView();
     }
 }
