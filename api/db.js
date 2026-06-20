@@ -69,6 +69,15 @@ module.exports = async (req, res) => {
                     await c.query('BEGIN');
                     try {
                         if (key === 'users') {
+                            for (const u of data) {
+                                if (u.profilePhoto && u.profilePhoto.startsWith('data:')) {
+                                    const base64Content = u.profilePhoto.split('base64,')[1] || '';
+                                    const sizeInBytes = (base64Content.length * 3) / 4;
+                                    if (sizeInBytes > 2 * 1024 * 1024) {
+                                        throw new Error("Validation Error: The uploaded photo exceeds the maximum size limit of 2MB.");
+                                    }
+                                }
+                            }
                             await c.query('DELETE FROM users');
                             for (const u of data) await c.query('INSERT INTO users VALUES ($1, $2, $3, $4, $5, $6)', [u.username, u.passwordHash, u.classGrade, u.role, u.status, u.profilePhoto || null]);
                         } else if (key === 'timetable') {

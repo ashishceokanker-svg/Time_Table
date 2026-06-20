@@ -199,23 +199,47 @@ function initApp() {
 }
 
 function saveToLocalStorage(key) {
-    if (key === 'timetable') {
-        localStorage.setItem('anti_gravity_timetable', JSON.stringify(AppState.timetable));
-        saveToDatabase('timetable', AppState.timetable);
-    } else if (key === 'logs') {
-        localStorage.setItem('anti_gravity_logs', JSON.stringify(AppState.logs));
-        saveToDatabase('logs', AppState.logs);
-    } else if (key === 'theme') {
-        localStorage.setItem('anti_gravity_theme', AppState.theme);
-    } else if (key === 'users') {
-        localStorage.setItem('anti_gravity_users', JSON.stringify(AppState.users));
-        saveToDatabase('users', AppState.users);
-    } else if (key === 'current_user') {
-        if (AppState.currentUser) {
-            localStorage.setItem('anti_gravity_current_user', JSON.stringify(AppState.currentUser));
-        } else {
-            localStorage.removeItem('anti_gravity_current_user');
+    try {
+        if (key === 'timetable') {
+            try {
+                localStorage.setItem('anti_gravity_timetable', JSON.stringify(AppState.timetable));
+            } catch (e) {
+                console.warn("Storage quota warning for timetable:", e);
+            }
+            saveToDatabase('timetable', AppState.timetable);
+        } else if (key === 'logs') {
+            try {
+                localStorage.setItem('anti_gravity_logs', JSON.stringify(AppState.logs));
+            } catch (e) {
+                console.warn("Storage quota warning for logs:", e);
+            }
+            saveToDatabase('logs', AppState.logs);
+        } else if (key === 'theme') {
+            try {
+                localStorage.setItem('anti_gravity_theme', AppState.theme);
+            } catch (e) {
+                console.warn("Storage quota warning for theme:", e);
+            }
+        } else if (key === 'users') {
+            try {
+                localStorage.setItem('anti_gravity_users', JSON.stringify(AppState.users));
+            } catch (e) {
+                console.warn("Storage quota warning for users:", e);
+            }
+            saveToDatabase('users', AppState.users);
+        } else if (key === 'current_user') {
+            if (AppState.currentUser) {
+                try {
+                    localStorage.setItem('anti_gravity_current_user', JSON.stringify(AppState.currentUser));
+                } catch (e) {
+                    console.warn("Storage quota warning for current_user:", e);
+                }
+            } else {
+                localStorage.removeItem('anti_gravity_current_user');
+            }
         }
+    } catch (err) {
+        console.error("Critical error in saveToLocalStorage:", err);
     }
 }
 
@@ -555,16 +579,52 @@ function setupAuthEvents() {
                 errorDiv.classList.remove('hide');
                 return;
             }
+            if (file.size > 2 * 1024 * 1024) {
+                errorDiv.textContent = "Error: The uploaded photo exceeds the maximum size limit of 2MB. Please upload a smaller image.";
+                errorDiv.classList.remove('hide');
+                return;
+            }
             try {
                 profilePhoto = await new Promise((resolve, reject) => {
                     const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result);
+                    reader.onload = (event) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const MAX_WIDTH = 128;
+                            const MAX_HEIGHT = 128;
+                            let width = img.width;
+                            let height = img.height;
+
+                            if (width > height) {
+                                if (width > MAX_WIDTH) {
+                                    height *= MAX_WIDTH / width;
+                                    width = MAX_WIDTH;
+                                }
+                            } else {
+                                if (height > MAX_HEIGHT) {
+                                    width *= MAX_HEIGHT / height;
+                                    height = MAX_HEIGHT;
+                                }
+                            }
+
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                            resolve(dataUrl);
+                        };
+                        img.onerror = (err) => reject(err);
+                        img.src = event.target.result;
+                    };
                     reader.onerror = (err) => reject(err);
                     reader.readAsDataURL(file);
                 });
             } catch (err) {
-                console.error("Error reading file:", err);
-                errorDiv.textContent = "Error: Failed to read profile photo!";
+                console.error("Error compressing file:", err);
+                errorDiv.textContent = "Error: Failed to process profile photo!";
                 errorDiv.classList.remove('hide');
                 return;
             }
@@ -589,6 +649,25 @@ function setupAuthEvents() {
         // Reset form
         registerForm.reset();
     });
+
+    // Instant Photo Size Check
+    const photoInput = document.getElementById('register-photo');
+    if (photoInput) {
+        photoInput.addEventListener('change', () => {
+            const errorDiv = document.getElementById('register-error-msg');
+            errorDiv.classList.add('hide');
+            errorDiv.textContent = "";
+            
+            if (photoInput.files && photoInput.files[0]) {
+                const file = photoInput.files[0];
+                if (file.size > 2 * 1024 * 1024) {
+                    errorDiv.textContent = "Error: The uploaded photo exceeds the maximum size limit of 2MB. Please upload a smaller image.";
+                    errorDiv.classList.remove('hide');
+                    photoInput.value = ""; // Clear selection
+                }
+            }
+        });
+    }
 
     // Logout Click
     document.getElementById('btn-logout').addEventListener('click', () => {
