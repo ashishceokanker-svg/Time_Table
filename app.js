@@ -786,6 +786,14 @@ function checkAuthState() {
         document.getElementById('logo-grade-badge').textContent = 'Grade 11';
         document.getElementById('logo-grade-badge').style.display = 'block';
         
+        // Reset logo icon to default graduation cap
+        const logoIcon = document.getElementById('logo-icon');
+        if (logoIcon) {
+            logoIcon.innerHTML = '<i class="fa-solid fa-graduation-cap"></i>';
+            logoIcon.style.background = '';
+            logoIcon.style.boxShadow = '';
+        }
+        
         updateDocumentTitle('login');
     } else {
         // Hide auth modal gateway
@@ -808,6 +816,20 @@ function checkAuthState() {
             avatarDiv.innerHTML = `<img src="${AppState.currentUser.profilePhoto}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />`;
         } else {
             avatarDiv.textContent = AppState.currentUser.username.charAt(0).toUpperCase();
+        }
+
+        // Update profile photo in the sidebar header logo icon
+        const headerLogoIcon = document.getElementById('logo-icon');
+        if (headerLogoIcon) {
+            if (AppState.currentUser.profilePhoto) {
+                headerLogoIcon.innerHTML = `<img src="${AppState.currentUser.profilePhoto}" style="width: 100%; height: 100%; border-radius: inherit; object-fit: cover;" />`;
+                headerLogoIcon.style.background = 'none'; // clear gradient if image exists
+                headerLogoIcon.style.boxShadow = 'none';
+            } else {
+                headerLogoIcon.innerHTML = `<span style="font-weight: 700; font-family: var(--font-display);">${AppState.currentUser.username.charAt(0).toUpperCase()}</span>`;
+                headerLogoIcon.style.background = 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)'; // use avatar gradient
+                headerLogoIcon.style.boxShadow = '0 4px 10px rgba(245, 158, 11, 0.2)';
+            }
         }
 
         // Render admin panel and reports tab visibility
