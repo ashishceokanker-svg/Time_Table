@@ -20,6 +20,125 @@ var server = http.createServer(function (req, res) {
     console.log('[' + new Date().toISOString() + '] ' + req.method + ' ' + req.url);
 
     // Handle API endpoints
+    if (req.url.startsWith('/api/user/login')) {
+        if (req.method === 'OPTIONS') {
+            res.writeHead(200, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            });
+            res.end();
+            return;
+        }
+
+        if (req.method === 'POST') {
+            var body = '';
+            req.on('data', function (chunk) {
+                body += chunk;
+            });
+            req.on('end', function () {
+                try {
+                    var payload = JSON.parse(body);
+                    var username = payload.username;
+                    var password = payload.password;
+                    var classGrade = payload.classGrade;
+
+                    if (!username || !password || !classGrade) {
+                        res.writeHead(400, {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        });
+                        res.end(JSON.stringify({ error: 'Missing username, password, or classGrade' }));
+                        return;
+                    }
+
+                    var LOCAL_DB_PATH = path.join(__dirname, 'local_db.json');
+                    var matchedUser = null;
+
+                    if (fs.existsSync(LOCAL_DB_PATH)) {
+                        try {
+                            var db = JSON.parse(fs.readFileSync(LOCAL_DB_PATH, 'utf8'));
+                            if (db.users && Array.isArray(db.users)) {
+                                matchedUser = db.users.find(function (u) {
+                                    return u.username.toLowerCase() === username.toLowerCase();
+                                });
+                            }
+                        } catch (e) {}
+                    }
+
+                    if (!matchedUser && username.toLowerCase() === 'admin') {
+                        matchedUser = { username: 'admin', passwordHash: 'admin', classGrade: 'Admin', role: 'admin', status: 'approved' };
+                    }
+
+                    if (!matchedUser) {
+                        res.writeHead(401, {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        });
+                        res.end(JSON.stringify({ error: 'Error: User not found!' }));
+                        return;
+                    }
+
+                    if (matchedUser.passwordHash !== password) {
+                        res.writeHead(401, {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        });
+                        res.end(JSON.stringify({ error: 'Error: Incorrect password!' }));
+                        return;
+                    }
+
+                    if (matchedUser.classGrade.toLowerCase() !== classGrade.toLowerCase()) {
+                        res.writeHead(401, {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        });
+                        res.end(JSON.stringify({ error: 'Error: Class does not match registered details!' }));
+                        return;
+                    }
+
+                    if (matchedUser.status === 'pending') {
+                        res.writeHead(401, {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        });
+                        res.end(JSON.stringify({ error: 'Account Pending Approval: An administrator must approve your registration first.' }));
+                        return;
+                    } else if (matchedUser.status === 'deactivated') {
+                        res.writeHead(401, {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        });
+                        res.end(JSON.stringify({ error: 'Account Deactivated: This account has been deactivated by the administrator.' }));
+                        return;
+                    }
+
+                    res.writeHead(200, {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    });
+                    res.end(JSON.stringify({
+                        success: true,
+                        user: {
+                            username: matchedUser.username,
+                            classGrade: matchedUser.classGrade,
+                            role: matchedUser.role,
+                            status: matchedUser.status,
+                            profilePhoto: matchedUser.profilePhoto
+                        }
+                    }));
+                } catch (error) {
+                    res.writeHead(500, {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    });
+                    res.end(JSON.stringify({ error: 'Internal Server Error: ' + error.message }));
+                }
+            });
+            return;
+        }
+    }
+
     if (req.url.startsWith('/api/db')) {
         if (req.method === 'OPTIONS') {
             res.writeHead(200, {

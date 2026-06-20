@@ -463,7 +463,7 @@ function setupAuthEvents() {
     });
 
     // Login Form Submit
-    loginForm.addEventListener('submit', (e) => {
+    loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('login-name').value.trim();
         const pass = document.getElementById('login-password').value;
@@ -473,48 +473,42 @@ function setupAuthEvents() {
         errorDiv.classList.add('hide');
         errorDiv.textContent = "";
 
-        // Find user
-        const user = AppState.users.find(u => u.username.toLowerCase() === name.toLowerCase());
-        if (!user) {
-            errorDiv.textContent = "Error: User not found!";
-            errorDiv.classList.remove('hide');
-            return;
-        }
+        try {
+            const response = await fetch(`${API_BASE}/api/user/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: name,
+                    password: pass,
+                    classGrade: classGrade
+                })
+            });
 
-        if (user.passwordHash !== pass) {
-            errorDiv.textContent = "Error: Incorrect password!";
+            if (response.ok) {
+                const result = await response.json();
+                
+                // Login success
+                AppState.currentUser = result.user;
+                saveToLocalStorage('current_user');
+                resetInactivityTimeout();
+                
+                // Clear form
+                loginForm.reset();
+                
+                // Apply login state
+                checkAuthState();
+            } else {
+                const errData = await response.json().catch(() => ({}));
+                errorDiv.textContent = errData.error || "Error: Invalid credentials!";
+                errorDiv.classList.remove('hide');
+            }
+        } catch (err) {
+            console.error("Login failed:", err);
+            errorDiv.textContent = "Error: Network error or server unreachable!";
             errorDiv.classList.remove('hide');
-            return;
         }
-
-        // Verify Class matches
-        if (user.classGrade.toLowerCase() !== classGrade.toLowerCase()) {
-            errorDiv.textContent = "Error: Class does not match registered details!";
-            errorDiv.classList.remove('hide');
-            return;
-        }
-
-        // Check Status
-        if (user.status === 'pending') {
-            errorDiv.textContent = "Account Pending Approval: An administrator must approve your registration first.";
-            errorDiv.classList.remove('hide');
-            return;
-        } else if (user.status === 'deactivated') {
-            errorDiv.textContent = "Account Deactivated: This account has been deactivated by the administrator.";
-            errorDiv.classList.remove('hide');
-            return;
-        }
-
-        // Login success
-        AppState.currentUser = user;
-        saveToLocalStorage('current_user');
-        resetInactivityTimeout();
-        
-        // Clear form
-        loginForm.reset();
-        
-        // Apply login state
-        checkAuthState();
     });
 
     // Register Form Submit
