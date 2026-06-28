@@ -77,6 +77,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     initApp();
     setupEventListeners();
     await loadDatabase();
+    
+    // Switch to target view if requested via URL param (cross-page routing)
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetView = urlParams.get('view');
+    if (targetView && AppState.currentUser) {
+        switchView(targetView);
+    }
 });
 
 function initApp() {
