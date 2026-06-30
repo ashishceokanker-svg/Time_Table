@@ -156,23 +156,7 @@
                     </div>
                 </div>
 
-                <!-- Current Timetable Periodic Table Widget -->
-                <div class="card" id="current-timetable-dashboard-card" style="margin-bottom: 24px;">
-                    <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-                        <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-table-cells text-primary"></i> Current Timetable</h3>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span class="badge" id="dashboard-timetable-badge" style="background-color: var(--accent-primary); color: white; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Weekly</span>
-                            <button class="btn btn-secondary" id="btn-dashboard-manage-timetable" style="padding: 4px 10px; font-size: 0.75rem; min-height: 0;">
-                                <i class="fa-solid fa-pen-to-square"></i> Manage Timetable
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body" style="overflow-x: auto;">
-                        <div id="dashboard-periodic-grid-container">
-                            <!-- Dynamic periodic grid mirrored from the Create Timetable view -->
-                        </div>
-                    </div>
-                </div>
+
 
                 <!-- Metrics Summary Cards -->
                 <div class="metrics-grid">
@@ -547,17 +531,49 @@
             <section id="view-reports" class="content-view">
                 <!-- Filters Card -->
                 <div class="card reports-filters-card" style="margin-bottom: 24px;">
-                    <div class="card-header">
-                        <h3><i class="fa-solid fa-filter text-primary"></i> Report Filters</h3>
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <h3 style="margin: 0;"><i class="fa-solid fa-filter text-primary"></i> Report Filters</h3>
+                        <div class="duration-selector-group" style="display: flex; gap: 8px; background: rgba(120, 120, 120, 0.05); padding: 4px; border-radius: 10px; border: 1px solid var(--border-color);">
+                            <button class="btn btn-secondary active" id="btn-report-period-week" style="padding: 6px 16px; font-size: 0.8rem; border-radius: 8px; border: none; min-height: 0;">Weekly Report</button>
+                            <button class="btn btn-secondary" id="btn-report-period-month" style="padding: 6px 16px; font-size: 0.8rem; border-radius: 8px; border: none; min-height: 0;">Monthly Report</button>
+                        </div>
                     </div>
                     <div class="card-body" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; padding: 20px 24px;">
-                        <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
-                            <label for="report-start-date" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-secondary);">Start Date</label>
-                            <input type="date" id="report-start-date" style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(120, 120, 120, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); outline: none;">
+                        <!-- Year Selector -->
+                        <div class="form-group" style="flex: 1; min-width: 120px; margin-bottom: 0;">
+                            <label for="report-filter-year" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-secondary);">Year</label>
+                            <select id="report-filter-year" style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(120, 120, 120, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); outline: none;">
+                                <option value="2025">2025</option>
+                                <option value="2026" selected>2026</option>
+                                <option value="2027">2027</option>
+                            </select>
                         </div>
-                        <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
-                            <label for="report-end-date" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-secondary);">End Date</label>
-                            <input type="date" id="report-end-date" style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(120, 120, 120, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); outline: none;">
+                        
+                        <!-- Month Selector (shown only in monthly report mode) -->
+                        <div id="report-month-filter-group" class="form-group" style="display: none; flex: 2; min-width: 150px; margin-bottom: 0;">
+                            <label for="report-filter-month" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-secondary);">Month</label>
+                            <select id="report-filter-month" style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(120, 120, 120, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); outline: none;">
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Week Selector (shown only in weekly report mode) -->
+                        <div id="report-week-filter-group" class="form-group" style="display: flex; flex: 2; min-width: 200px; margin-bottom: 0;">
+                            <label for="report-filter-week" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-secondary);">Week</label>
+                            <select id="report-filter-week" style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(120, 120, 120, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); outline: none;">
+                                <!-- Dynamically populated -->
+                            </select>
                         </div>
                         <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
                             <label for="report-subject-select" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-secondary);">Subject</label>

@@ -18,6 +18,7 @@ const AppState = {
     dashboardPeriod: 'week',
     timetablePeriod: 'week',
     reportGridType: 'actual',
+    reportPeriod: 'week',
     
     // User-specific isolated views of the data
     get userTimetable() {
@@ -353,19 +354,40 @@ function setupEventListeners() {
     });
 
     // Reports Filters (Standard User)
-    const reportStart = document.getElementById('report-start-date');
-    const reportEnd = document.getElementById('report-end-date');
     const reportSubject = document.getElementById('report-subject-select');
     const reportReset = document.getElementById('btn-reset-report-filters');
 
-    if (reportStart) reportStart.addEventListener('change', renderReportsView);
-    if (reportEnd) reportEnd.addEventListener('change', renderReportsView);
     if (reportSubject) reportSubject.addEventListener('change', renderReportsView);
     if (reportReset) {
         reportReset.addEventListener('click', () => {
-            reportStart.value = getOffsetDateString(30);
-            reportEnd.value = getOffsetDateString(0);
-            reportSubject.value = 'ALL';
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth() + 1;
+            const currentWeekNo = getISOWeekNumber(now);
+            
+            const yr = document.getElementById('report-filter-year');
+            const mn = document.getElementById('report-filter-month');
+            const wk = document.getElementById('report-filter-week');
+            
+            if (yr) yr.value = currentYear;
+            if (mn) mn.value = currentMonth;
+            
+            populateReportsWeeksDropdown(currentYear);
+            if (wk) wk.value = currentWeekNo;
+            
+            if (reportSubject) reportSubject.value = 'ALL';
+            
+            // Reset to week period
+            const btnWeek = document.getElementById('btn-report-period-week');
+            const btnMonth = document.getElementById('btn-report-period-month');
+            if (btnWeek && btnMonth) {
+                btnWeek.classList.add('active');
+                btnMonth.classList.remove('active');
+                document.getElementById('report-month-filter-group').style.display = 'none';
+                document.getElementById('report-week-filter-group').style.display = 'flex';
+                AppState.reportPeriod = 'week';
+            }
+            
             renderReportsView();
         });
     }
@@ -498,12 +520,7 @@ function setupEventListeners() {
         createTimetableForm.addEventListener('submit', handleCreateFormSubmit);
     }
 
-    const btnDashboardManage = document.getElementById('btn-dashboard-manage-timetable');
-    if (btnDashboardManage) {
-        btnDashboardManage.addEventListener('click', () => {
-            switchView('timetable');
-        });
-    }
+
 
     // Study Log Form Submit
     document.getElementById('study-log-form').addEventListener('submit', handleLogFormSubmit);
@@ -575,6 +592,7 @@ function setupEventListeners() {
 
     // Initialize timeframe filters for grids
     initTimeframeFilters();
+    initReportsTimeframeFilters();
 }
 
 function setupAuthEvents() {
@@ -1567,8 +1585,7 @@ function renderDashboardView() {
     // Render Subject-wise SVG Donut/Pie Chart
     renderSubjectPieChart(subjectMinutes);
 
-    // Render Dashboard Mirror Timetable Widget
-    renderDashboardTimetable();
+
 }
 
 function renderMissedSchedulesDashboard() {
@@ -1893,12 +1910,84 @@ function initTimeframeFilters() {
     const currentWeekNo = getISOWeekNumber(now);
     weekSelect.value = currentWeekNo;
     
+    // Set min date of form date input to today
+    const dateInput = document.getElementById('create-schedule-date');
+    if (dateInput) {
+        dateInput.min = now.toISOString().split('T')[0];
+    }
+    
+    restrictTimeframeFilters();
+    
     yearSelect.addEventListener('change', () => {
         populateWeeksDropdown(yearSelect.value);
+        restrictTimeframeFilters();
         fetchTimetableForTimeframe();
     });
-    monthSelect.addEventListener('change', fetchTimetableForTimeframe);
-    weekSelect.addEventListener('change', fetchTimetableForTimeframe);
+    monthSelect.addEventListener('change', () => {
+        restrictTimeframeFilters();
+        fetchTimetableForTimeframe();
+    });
+    weekSelect.addEventListener('change', () => {
+        restrictTimeframeFilters();
+        fetchTimetableForTimeframe();
+    });
+}
+
+function restrictTimeframeFilters() {
+    const yearSelect = document.getElementById('timetable-filter-year');
+    const monthSelect = document.getElementById('timetable-filter-month');
+    const weekSelect = document.getElementById('timetable-filter-week');
+    
+    if (!yearSelect || !monthSelect || !weekSelect) return;
+    
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-indexed
+    const currentWeekNo = getISOWeekNumber(now);
+    
+    // 1. Restrict Years
+    Array.from(yearSelect.options).forEach(opt => {
+        const y = parseInt(opt.value);
+        if (y < currentYear) {
+            opt.disabled = true;
+            opt.style.display = 'none';
+        } else {
+            opt.disabled = false;
+            opt.style.display = '';
+        }
+    });
+    
+    const selectedYear = parseInt(yearSelect.value);
+    
+    // 2. Restrict Months
+    Array.from(monthSelect.options).forEach(opt => {
+        const m = parseInt(opt.value);
+        if (selectedYear === currentYear && m < currentMonth) {
+            opt.disabled = true;
+            opt.style.display = 'none';
+        } else {
+            opt.disabled = false;
+            opt.style.display = '';
+        }
+    });
+    if (selectedYear === currentYear && parseInt(monthSelect.value) < currentMonth) {
+        monthSelect.value = currentMonth;
+    }
+    
+    // 3. Restrict Weeks
+    Array.from(weekSelect.options).forEach(opt => {
+        const w = parseInt(opt.value);
+        if (selectedYear === currentYear && w < currentWeekNo) {
+            opt.disabled = true;
+            opt.style.display = 'none';
+        } else {
+            opt.disabled = false;
+            opt.style.display = '';
+        }
+    });
+    if (selectedYear === currentYear && parseInt(weekSelect.value) < currentWeekNo) {
+        weekSelect.value = currentWeekNo;
+    }
 }
 
 function getISOWeekNumber(date) {
@@ -1988,7 +2077,6 @@ async function fetchTimetableForTimeframe() {
         }
         
         renderTimetableView();
-        renderDashboardTimetable();
     } catch (error) {
         console.error('Error fetching timeframe filtered timetable:', error);
     }
@@ -2904,22 +2992,108 @@ function deleteUser(username) {
 
 // --- REPORTS RENDERING & ANALYTICS ---
 
+let _reportsFiltersInitialized = false;
+
+function initReportsTimeframeFilters() {
+    if (_reportsFiltersInitialized) return;
+    const yearSelect = document.getElementById('report-filter-year');
+    const monthSelect = document.getElementById('report-filter-month');
+    const weekSelect = document.getElementById('report-filter-week');
+    
+    if (!yearSelect || !monthSelect || !weekSelect) return;
+    
+    _reportsFiltersInitialized = true;
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-indexed
+    
+    yearSelect.value = currentYear;
+    monthSelect.value = currentMonth;
+    
+    populateReportsWeeksDropdown(currentYear);
+    const currentWeekNo = getISOWeekNumber(now);
+    weekSelect.value = currentWeekNo;
+    
+    yearSelect.addEventListener('change', () => {
+        populateReportsWeeksDropdown(yearSelect.value);
+        renderReportsView();
+    });
+    monthSelect.addEventListener('change', renderReportsView);
+    weekSelect.addEventListener('change', renderReportsView);
+    
+    // Toggles
+    const btnWeek = document.getElementById('btn-report-period-week');
+    const btnMonth = document.getElementById('btn-report-period-month');
+    if (btnWeek && btnMonth) {
+        btnWeek.addEventListener('click', () => {
+            btnWeek.classList.add('active');
+            btnMonth.classList.remove('active');
+            document.getElementById('report-month-filter-group').style.display = 'none';
+            document.getElementById('report-week-filter-group').style.display = 'flex';
+            AppState.reportPeriod = 'week';
+            renderReportsView();
+        });
+        btnMonth.addEventListener('click', () => {
+            btnMonth.classList.add('active');
+            btnWeek.classList.remove('active');
+            document.getElementById('report-month-filter-group').style.display = 'flex';
+            document.getElementById('report-week-filter-group').style.display = 'none';
+            AppState.reportPeriod = 'month';
+            renderReportsView();
+        });
+    }
+}
+
+function populateReportsWeeksDropdown(year) {
+    const weekSelect = document.getElementById('report-filter-week');
+    if (!weekSelect) return;
+    const prevValue = weekSelect.value;
+    weekSelect.innerHTML = '';
+    
+    for (let w = 1; w <= 53; w++) {
+        const { startStr, endStr } = getDatesOfWeek(year, w);
+        const startDate = new Date(startStr);
+        if (w === 53 && startDate.getFullYear() > year) {
+            break;
+        }
+        
+        const option = document.createElement('option');
+        option.value = w;
+        
+        const formatMonthDay = (date) => {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        };
+        option.textContent = `Week ${w} (${formatMonthDay(startDate)} - ${formatMonthDay(new Date(endStr))})`;
+        weekSelect.appendChild(option);
+    }
+    
+    if (prevValue && weekSelect.querySelector(`option[value="${prevValue}"]`)) {
+        weekSelect.value = prevValue;
+    }
+}
+
 async function renderReportsView() {
-    const reportStart = document.getElementById('report-start-date');
-    const reportEnd = document.getElementById('report-end-date');
+    const yrSelect = document.getElementById('report-filter-year');
+    const mnSelect = document.getElementById('report-filter-month');
+    const wkSelect = document.getElementById('report-filter-week');
     const reportSubject = document.getElementById('report-subject-select');
     
-    if (!reportStart || !reportEnd || !reportSubject || !AppState.currentUser) return;
+    if (!yrSelect || !mnSelect || !wkSelect || !reportSubject || !AppState.currentUser) return;
     
-    if (!reportStart.value) reportStart.value = getOffsetDateString(30);
-    if (!reportEnd.value) reportEnd.value = getOffsetDateString(0);
-    
-    const startDate = reportStart.value;
-    const endDate = reportEnd.value;
+    const year = yrSelect.value;
+    const month = mnSelect.value;
+    const week = wkSelect.value;
     const selectedSubject = reportSubject.value;
     
+    let queryParams = `?reports=true&username=${encodeURIComponent(AppState.currentUser.username)}&year=${year}`;
+    if (AppState.reportPeriod === 'week') {
+        queryParams += `&week=${week}`;
+    } else {
+        queryParams += `&month=${month}`;
+    }
+    
     try {
-        const response = await fetch(`${API_BASE}/api/db?reports=true&username=${encodeURIComponent(AppState.currentUser.username)}&startDate=${startDate}&endDate=${endDate}`);
+        const response = await fetch(`${API_BASE}/api/db${queryParams}`);
         if (!response.ok) {
             throw new Error(`Failed to fetch reports: ${response.statusText}`);
         }
@@ -3919,151 +4093,4 @@ function exportToPDF(isAdmin = false) {
     doc.save(`${filenamePrefix}_Report_${startDate}_to_${endDate}.pdf`);
 }
 
-function renderDashboardTimetable() {
-    const container = document.getElementById('dashboard-periodic-grid-container');
-    const badge = document.getElementById('dashboard-timetable-badge');
-    if (!container) return;
-    container.innerHTML = '';
 
-    const periodStr = AppState.timetablePeriod === 'week' ? 'Weekly' : 'Monthly';
-    if (badge) {
-        badge.textContent = periodStr;
-    }
-
-    if (AppState.timetablePeriod === 'week') {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'periodic-table-weekly';
-        
-        const days = [
-            { name: 'Monday', index: 1 },
-            { name: 'Tuesday', index: 2 },
-            { name: 'Wednesday', index: 3 },
-            { name: 'Thursday', index: 4 },
-            { name: 'Friday', index: 5 },
-            { name: 'Saturday', index: 6 },
-            { name: 'Sunday', index: 0 }
-        ];
-
-        days.forEach(dayObj => {
-            const col = document.createElement('div');
-            col.style.display = 'flex';
-            col.style.flexDirection = 'column';
-            
-            const header = document.createElement('div');
-            header.className = 'periodic-table-column-header';
-            header.textContent = dayObj.name.substring(0, 3);
-            col.appendChild(header);
-            
-            const cellsWrapper = document.createElement('div');
-            cellsWrapper.className = 'periodic-table-column-cells';
-            
-            const daySessions = AppState.userTimetable.filter(s => s.day == dayObj.index);
-            
-            if (daySessions.length === 0) {
-                const emptyCell = document.createElement('div');
-                emptyCell.className = 'periodic-cell periodic-cell-empty periodic-cell-compact';
-                emptyCell.innerHTML = `
-                    <div class="periodic-symbol" style="font-size: 0.9rem; opacity: 0.2;"><i class="fa-solid fa-bed"></i></div>
-                    <div class="periodic-name" style="opacity: 0.4; font-size: 0.6rem;">Free</div>
-                `;
-                cellsWrapper.appendChild(emptyCell);
-            } else {
-                daySessions.sort((a, b) => a.startTime.localeCompare(b.startTime));
-                daySessions.forEach((session, idx) => {
-                    const cell = renderPeriodicCell(session, idx);
-                    cell.classList.add('periodic-cell-compact');
-                    // Add redirection on click
-                    cell.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        switchView('timetable');
-                        editCreateTimetableSession(session);
-                    });
-                    cellsWrapper.appendChild(cell);
-                });
-            }
-            
-            col.appendChild(cellsWrapper);
-            wrapper.appendChild(col);
-        });
-
-        container.appendChild(wrapper);
-    } else {
-        // Render monthly calendar (simplified compact view)
-        const wrapper = document.createElement('div');
-        wrapper.className = 'periodic-table-monthly';
-        
-        const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        weekDays.forEach(wd => {
-            const header = document.createElement('div');
-            header.className = 'periodic-month-header';
-            header.textContent = wd;
-            wrapper.appendChild(header);
-        });
-
-        const d = new Date();
-        const year = d.getFullYear();
-        const month = d.getMonth();
-        
-        const firstDayIndex = new Date(year, month, 1).getDay();
-        const offset = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
-        const totalDays = new Date(year, month + 1, 0).getDate();
-
-        for (let i = 0; i < offset; i++) {
-            const emptyCell = document.createElement('div');
-            emptyCell.className = 'month-day-cell';
-            emptyCell.style.opacity = '0.35';
-            emptyCell.style.borderStyle = 'dashed';
-            wrapper.appendChild(emptyCell);
-        }
-
-        const todayStr = d.toISOString().split('T')[0];
-        
-        for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-            
-            const cell = document.createElement('div');
-            cell.className = 'month-day-cell';
-            if (dateStr === todayStr) {
-                cell.classList.add('today');
-            }
-            
-            const dayNumberLabel = document.createElement('div');
-            dayNumberLabel.className = 'day-number';
-            dayNumberLabel.textContent = dayNum;
-            cell.appendChild(dayNumberLabel);
-            
-            const daySessions = AppState.userTimetable.filter(s => s.date === dateStr);
-            
-            daySessions.forEach(session => {
-                const pill = document.createElement('div');
-                const colorHex = getSubjectColorHex(session.subject);
-                pill.className = 'month-session-pill';
-                pill.style.background = `color-mix(in srgb, ${colorHex} 15%, transparent)`;
-                pill.style.border = `1px solid ${colorHex}`;
-                pill.style.color = colorHex;
-                
-                const symbol = session.subject ? session.subject.substring(0, 2).toUpperCase() : '??';
-                pill.textContent = `${symbol}`;
-                pill.title = `${session.subject}: ${session.lesson || 'Study'}\nTime: ${session.startTime} - ${session.endTime}`;
-                
-                pill.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    switchView('timetable');
-                    editCreateTimetableSession(session);
-                });
-                
-                cell.appendChild(pill);
-            });
-
-            cell.addEventListener('click', () => {
-                switchView('timetable');
-                resetCreateTimetableForm();
-                document.getElementById('create-schedule-date').value = dateStr;
-            });
-            
-            wrapper.appendChild(cell);
-        }
-
-        container.appendChild(wrapper);
-    }
-}

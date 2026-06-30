@@ -40,11 +40,35 @@ module.exports = async (req, res) => {
                 if (!username) {
                     return res.status(400).json({ error: 'Missing username parameter for reports' });
                 }
-                const startDate = req.query.startDate;
-                const endDate = req.query.endDate;
+                let startDate = req.query.startDate;
+                let endDate = req.query.endDate;
+                
+                if (year) {
+                    if (week) {
+                        const simple = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+                        const dayOfWeek = simple.getDay();
+                        const ISOweekStart = new Date(simple);
+                        if (dayOfWeek <= 4) {
+                            ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+                        } else {
+                            ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+                        }
+                        const ISOweekEnd = new Date(ISOweekStart);
+                        ISOweekEnd.setDate(ISOweekStart.getDate() + 6);
+                        
+                        startDate = ISOweekStart.toISOString().split('T')[0];
+                        endDate = ISOweekEnd.toISOString().split('T')[0];
+                    } else if (month) {
+                        const m = parseInt(month);
+                        const y = parseInt(year);
+                        startDate = `${y}-${String(m).padStart(2, '0')}-01`;
+                        const lastDay = new Date(y, m, 0).getDate();
+                        endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+                    }
+                }
                 
                 if (!startDate || !endDate) {
-                    return res.status(400).json({ error: 'Missing startDate or endDate parameter for reports' });
+                    return res.status(400).json({ error: 'Missing timeframe parameters (startDate/endDate or year/month/week) for reports' });
                 }
 
                 // Fetch the logs and timetable slots
