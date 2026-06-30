@@ -1,5 +1,5 @@
 /**
- * Strive - Study Tracker & Timetable App
+ * Time Table Tracker - Study Tracker & Timetable App
  * Core Application Logic
  */
 
@@ -3712,14 +3712,28 @@ function exportToExcel(isAdmin = false) {
         
         filenamePrefix = `AdminReport_${targetUser}`;
     } else {
-        const reportStart = document.getElementById('report-start-date');
-        const reportEnd = document.getElementById('report-end-date');
+        const yrSelect = document.getElementById('report-filter-year');
+        const mnSelect = document.getElementById('report-filter-month');
+        const wkSelect = document.getElementById('report-filter-week');
         const reportSubject = document.getElementById('report-subject-select');
         
         targetUser = AppState.currentUser.username;
-        startDate = reportStart.value || getOffsetDateString(30);
-        endDate = reportEnd.value || getOffsetDateString(0);
+        const year = yrSelect.value;
+        const month = mnSelect.value;
+        const week = wkSelect.value;
         selectedSubject = reportSubject.value;
+        
+        if (AppState.reportPeriod === 'week') {
+            const range = getDatesOfWeek(parseInt(year), parseInt(week));
+            startDate = range.startStr;
+            endDate = range.endStr;
+        } else {
+            const m = parseInt(month);
+            const y = parseInt(year);
+            startDate = `${y}-${String(m).padStart(2, '0')}-01`;
+            const lastDay = new Date(y, m, 0).getDate();
+            endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        }
         
         logs = AppState.userLogs.filter(log => {
             if (log.date < startDate || log.date > endDate) return false;
@@ -3884,14 +3898,28 @@ function exportToPDF(isAdmin = false) {
         
         filenamePrefix = `AdminReport_${targetUser}`;
     } else {
-        const reportStart = document.getElementById('report-start-date');
-        const reportEnd = document.getElementById('report-end-date');
+        const yrSelect = document.getElementById('report-filter-year');
+        const mnSelect = document.getElementById('report-filter-month');
+        const wkSelect = document.getElementById('report-filter-week');
         const reportSubject = document.getElementById('report-subject-select');
         
         targetUser = AppState.currentUser.username;
-        startDate = reportStart.value || getOffsetDateString(30);
-        endDate = reportEnd.value || getOffsetDateString(0);
+        const year = yrSelect.value;
+        const month = mnSelect.value;
+        const week = wkSelect.value;
         selectedSubject = reportSubject.value;
+        
+        if (AppState.reportPeriod === 'week') {
+            const range = getDatesOfWeek(parseInt(year), parseInt(week));
+            startDate = range.startStr;
+            endDate = range.endStr;
+        } else {
+            const m = parseInt(month);
+            const y = parseInt(year);
+            startDate = `${y}-${String(m).padStart(2, '0')}-01`;
+            const lastDay = new Date(y, m, 0).getDate();
+            endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        }
         
         logs = AppState.userLogs.filter(log => {
             if (log.date < startDate || log.date > endDate) return false;
@@ -3965,7 +3993,7 @@ function exportToPDF(isAdmin = false) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
     doc.setTextColor(99, 102, 241); // Indigo color
-    doc.text("Strive - Study Tracker & Timetable Report", 14, 20);
+    doc.text("Time Table Tracker - Study Tracker & Timetable Report", 14, 20);
     
     // Document Meta
     doc.setFont("helvetica", "normal");
