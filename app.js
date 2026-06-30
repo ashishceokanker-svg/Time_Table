@@ -433,6 +433,14 @@ function setupEventListeners() {
         document.getElementById('log-date').focus();
     });
 
+    // Contact Header Action
+    const contactHeaderBtn = document.getElementById('btn-contact-header');
+    if (contactHeaderBtn) {
+        contactHeaderBtn.addEventListener('click', () => {
+            switchView('contact');
+        });
+    }
+
     // Timetable Day selection tabs
     const dayTabs = document.getElementById('timetable-day-tabs');
     if (dayTabs) {
