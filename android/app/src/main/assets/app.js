@@ -17,6 +17,7 @@ const AppState = {
     currentUploadedFile: null,
     dashboardPeriod: 'week',
     timetablePeriod: 'week',
+    reportGridType: 'actual',
     
     // User-specific isolated views of the data
     get userTimetable() {
@@ -252,7 +253,7 @@ function saveToLocalStorage(key) {
 }
 
 // Base API URL resolver: points to absolute Vercel deployment URL if loaded as local file:/// (inside Android app)
-const API_BASE = window.location.protocol === 'file:' ? 'https://timetable-tau-six.vercel.app' : '';
+const API_BASE = 'https://timetable-tau-six.vercel.app';
 
 async function saveToDatabase(key, data) {
     try {
@@ -452,9 +453,13 @@ function setupEventListeners() {
             document.getElementById('create-schedule-day').required = true;
             document.getElementById('create-schedule-date').required = false;
             document.getElementById('create-schedule-date').value = '';
+            
+            // Timeframe filters toggle
+            document.getElementById('timetable-month-filter-group').style.display = 'none';
+            document.getElementById('timetable-week-filter-group').style.display = 'flex';
+            
             AppState.timetablePeriod = 'week';
-            renderTimetableView();
-            renderDashboardTimetable();
+            fetchTimetableForTimeframe();
         });
         
         btnPeriodMonth.addEventListener('click', () => {
@@ -465,9 +470,13 @@ function setupEventListeners() {
             document.getElementById('create-schedule-day').required = false;
             document.getElementById('create-schedule-day').value = '';
             document.getElementById('create-schedule-date').required = true;
+            
+            // Timeframe filters toggle
+            document.getElementById('timetable-month-filter-group').style.display = 'flex';
+            document.getElementById('timetable-week-filter-group').style.display = 'none';
+            
             AppState.timetablePeriod = 'month';
-            renderTimetableView();
-            renderDashboardTimetable();
+            fetchTimetableForTimeframe();
         });
     }
 
@@ -545,6 +554,27 @@ function setupEventListeners() {
             }
         });
     }
+
+    // Reports Grid Toggle buttons
+    const btnReportTypeActual = document.getElementById('btn-report-type-actual');
+    const btnReportTypeTarget = document.getElementById('btn-report-type-target');
+    if (btnReportTypeActual && btnReportTypeTarget) {
+        btnReportTypeActual.addEventListener('click', () => {
+            btnReportTypeActual.classList.add('active');
+            btnReportTypeTarget.classList.remove('active');
+            AppState.reportGridType = 'actual';
+            renderReportsView();
+        });
+        btnReportTypeTarget.addEventListener('click', () => {
+            btnReportTypeTarget.classList.add('active');
+            btnReportTypeActual.classList.remove('active');
+            AppState.reportGridType = 'target';
+            renderReportsView();
+        });
+    }
+
+    // Initialize timeframe filters for grids
+    initTimeframeFilters();
 }
 
 function setupAuthEvents() {
@@ -979,7 +1009,7 @@ function switchView(viewName) {
     if (viewName === 'dashboard') {
         renderDashboardView();
     } else if (viewName === 'timetable') {
-        renderTimetableView();
+        fetchTimetableForTimeframe();
     } else if (viewName === 'logs') {
         renderLogsView();
     } else if (viewName === 'reports') {
@@ -1840,6 +1870,131 @@ function renderSubjectBreakdownList(subjectMinutes) {
 }
 
 
+// --- TIMETABLE TIMEFRAME FILTER OPERATIONS ---
+let _timeframeFiltersInitialized = false;
+
+function initTimeframeFilters() {
+    if (_timeframeFiltersInitialized) return;
+    const yearSelect = document.getElementById('timetable-filter-year');
+    const monthSelect = document.getElementById('timetable-filter-month');
+    const weekSelect = document.getElementById('timetable-filter-week');
+    
+    if (!yearSelect || !monthSelect || !weekSelect) return;
+    
+    _timeframeFiltersInitialized = true;
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-indexed
+    
+    yearSelect.value = currentYear;
+    monthSelect.value = currentMonth;
+    
+    populateWeeksDropdown(currentYear);
+    const currentWeekNo = getISOWeekNumber(now);
+    weekSelect.value = currentWeekNo;
+    
+    yearSelect.addEventListener('change', () => {
+        populateWeeksDropdown(yearSelect.value);
+        fetchTimetableForTimeframe();
+    });
+    monthSelect.addEventListener('change', fetchTimetableForTimeframe);
+    weekSelect.addEventListener('change', fetchTimetableForTimeframe);
+}
+
+function getISOWeekNumber(date) {
+    const tempDate = new Date(date.valueOf());
+    tempDate.setDate(tempDate.getDate() + 4 - (tempDate.getDay() || 7));
+    const yearStart = new Date(tempDate.getFullYear(), 0, 1);
+    const weekNo = Math.ceil((((tempDate - yearStart) / 86400000) + 1) / 7);
+    return weekNo;
+}
+
+function getDatesOfWeek(year, week) {
+    const simple = new Date(year, 0, 1 + (week - 1) * 7);
+    const dayOfWeek = simple.getDay();
+    const ISOweekStart = new Date(simple);
+    if (dayOfWeek <= 4) {
+        ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+    } else {
+        ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+    }
+    const ISOweekEnd = new Date(ISOweekStart);
+    ISOweekEnd.setDate(ISOweekStart.getDate() + 6);
+    
+    return {
+        startStr: ISOweekStart.toISOString().split('T')[0],
+        endStr: ISOweekEnd.toISOString().split('T')[0]
+    };
+}
+
+function populateWeeksDropdown(year) {
+    const weekSelect = document.getElementById('timetable-filter-week');
+    if (!weekSelect) return;
+    const prevValue = weekSelect.value;
+    weekSelect.innerHTML = '';
+    
+    for (let w = 1; w <= 53; w++) {
+        const { startStr, endStr } = getDatesOfWeek(year, w);
+        const startDate = new Date(startStr);
+        if (w === 53 && startDate.getFullYear() > year) {
+            break;
+        }
+        
+        const option = document.createElement('option');
+        option.value = w;
+        
+        const formatMonthDay = (date) => {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        };
+        option.textContent = `Week ${w} (${formatMonthDay(startDate)} - ${formatMonthDay(new Date(endStr))})`;
+        weekSelect.appendChild(option);
+    }
+    
+    if (prevValue && weekSelect.querySelector(`option[value="${prevValue}"]`)) {
+        weekSelect.value = prevValue;
+    }
+}
+
+async function fetchTimetableForTimeframe() {
+    const yearSelect = document.getElementById('timetable-filter-year');
+    const monthSelect = document.getElementById('timetable-filter-month');
+    const weekSelect = document.getElementById('timetable-filter-week');
+    
+    if (!yearSelect || !monthSelect || !weekSelect || !AppState.currentUser) return;
+    
+    const year = yearSelect.value;
+    const month = monthSelect.value;
+    const week = weekSelect.value;
+    
+    let queryParams = `?username=${encodeURIComponent(AppState.currentUser.username)}&year=${year}`;
+    if (AppState.timetablePeriod === 'week') {
+        queryParams += `&week=${week}`;
+    } else {
+        queryParams += `&month=${month}`;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/db${queryParams}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch database: ${response.statusText}`);
+        }
+        const data = await response.json();
+        
+        if (data.timetable && Array.isArray(data.timetable)) {
+            AppState.userTimetable = data.timetable.filter(s => s.username.toLowerCase() === AppState.currentUser.username.toLowerCase() || s.username.toLowerCase() === 'admin');
+        }
+        if (data.logs && Array.isArray(data.logs)) {
+            AppState.userLogs = data.logs.filter(l => l.username.toLowerCase() === AppState.currentUser.username.toLowerCase());
+        }
+        
+        renderTimetableView();
+        renderDashboardTimetable();
+    } catch (error) {
+        console.error('Error fetching timeframe filtered timetable:', error);
+    }
+}
+
+
 // --- TIMETABLE VIEW LOGIC ---
 // --- TIMETABLE VIEW LOGIC ---
 function renderTimetableView() {
@@ -2143,8 +2298,7 @@ async function handleCreateFormSubmit(e) {
     // Save
     saveToLocalStorage('timetable');
     resetCreateTimetableForm();
-    renderTimetableView();
-    renderDashboardTimetable();
+    fetchTimetableForTimeframe();
     
     // If on dashboard, update stats too
     if (AppState.currentView === 'dashboard') {
@@ -2195,8 +2349,7 @@ function deleteCreateTimetableSession(id) {
     if (confirm("Are you sure you want to delete this study session from your timetable?")) {
         AppState.timetable = AppState.timetable.filter(s => s.id !== id);
         saveToLocalStorage('timetable');
-        renderTimetableView();
-        renderDashboardTimetable();
+        fetchTimetableForTimeframe();
         
         // Reset form if we were editing the deleted session
         if (document.getElementById('create-schedule-id').value === id) {
@@ -2751,12 +2904,12 @@ function deleteUser(username) {
 
 // --- REPORTS RENDERING & ANALYTICS ---
 
-function renderReportsView() {
+async function renderReportsView() {
     const reportStart = document.getElementById('report-start-date');
     const reportEnd = document.getElementById('report-end-date');
     const reportSubject = document.getElementById('report-subject-select');
     
-    if (!reportStart || !reportEnd || !reportSubject) return;
+    if (!reportStart || !reportEnd || !reportSubject || !AppState.currentUser) return;
     
     if (!reportStart.value) reportStart.value = getOffsetDateString(30);
     if (!reportEnd.value) reportEnd.value = getOffsetDateString(0);
@@ -2765,134 +2918,115 @@ function renderReportsView() {
     const endDate = reportEnd.value;
     const selectedSubject = reportSubject.value;
     
-    // Filter logs
-    let filteredLogs = AppState.userLogs.filter(log => {
-        if (log.date < startDate || log.date > endDate) return false;
-        if (selectedSubject !== 'ALL') {
-            const isStandard = ['Physics', 'Chemistry', 'Mathematics', 'English'].includes(log.subject);
-            if (selectedSubject === 'OTHER') {
-                if (isStandard) return false;
-            } else {
-                if (log.subject !== selectedSubject) return false;
-            }
+    try {
+        const response = await fetch(`${API_BASE}/api/db?reports=true&username=${encodeURIComponent(AppState.currentUser.username)}&startDate=${startDate}&endDate=${endDate}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch reports: ${response.statusText}`);
         }
-        return true;
-    });
-    
-    // Filter sessions
-    let filteredSessions = AppState.userTimetable.filter(s => {
-        if (s.date) {
-            if (s.date < startDate || s.date > endDate) return false;
+        const data = await response.json();
+        
+        let actualBlocks = data.actualBlocks || [];
+        let targetBlocks = data.targetBlocks || [];
+        
+        // Compute total actual minutes
+        let totalActualMinutes = actualBlocks.reduce((sum, b) => sum + b.duration, 0);
+        const actualHours = (totalActualMinutes / 60).toFixed(1);
+        
+        // Compute total target minutes
+        let totalTargetMinutes = targetBlocks.reduce((sum, b) => sum + b.duration, 0);
+        const targetHours = (totalTargetMinutes / 60).toFixed(1);
+        
+        // Compliance
+        let compliance = 0;
+        if (totalTargetMinutes > 0) {
+            compliance = Math.min(100, Math.round((totalActualMinutes / totalTargetMinutes) * 100));
+        } else if (totalActualMinutes > 0) {
+            compliance = 100;
         }
-        if (selectedSubject !== 'ALL') {
-            const isStandard = ['Physics', 'Chemistry', 'Mathematics', 'English'].includes(s.subject);
-            if (selectedSubject === 'OTHER') {
-                if (isStandard) return false;
-            } else {
-                if (s.subject !== selectedSubject) return false;
-            }
-        }
-        return true;
-    });
-    
-    // Calculate actual study hours
-    let totalActualMinutes = 0;
-    filteredLogs.forEach(log => totalActualMinutes += log.duration);
-    const actualHours = (totalActualMinutes / 60).toFixed(1);
-    
-    // Calculate target hours
-    let totalTargetMinutes = getTargetMinutesForDateRange(startDate, endDate, selectedSubject, AppState.userTimetable);
-    const targetHours = (totalTargetMinutes / 60).toFixed(1);
-    
-    // Compliance
-    let compliance = 0;
-    if (totalTargetMinutes > 0) {
-        compliance = Math.min(100, Math.round((totalActualMinutes / totalTargetMinutes) * 100));
-    } else if (totalActualMinutes > 0) {
-        compliance = 100;
-    }
-    
-    // Top Subject
-    const subjectMinutes = {};
-    filteredLogs.forEach(log => {
-        subjectMinutes[log.subject] = (subjectMinutes[log.subject] || 0) + log.duration;
-    });
-    let topSubject = 'None';
-    let topSubjectMins = 0;
-    for (const sub in subjectMinutes) {
-        if (subjectMinutes[sub] > topSubjectMins) {
-            topSubject = sub;
-            topSubjectMins = subjectMinutes[sub];
-        }
-    }
-    
-    // Update UI Metrics
-    document.getElementById('report-val-actual').textContent = `${actualHours}h`;
-    document.getElementById('report-val-actual-subtext').textContent = `${filteredLogs.length} logs found`;
-    document.getElementById('report-val-target').textContent = `${targetHours}h`;
-    document.getElementById('report-val-target-subtext').textContent = `${filteredSessions.length} sessions found`;
-    document.getElementById('report-val-compliance').textContent = `${compliance}%`;
-    document.getElementById('report-val-compliance-subtext').textContent = `${(totalActualMinutes/60).toFixed(1)} of ${(totalTargetMinutes/60).toFixed(1)} hrs`;
-    document.getElementById('report-val-top-subject').textContent = topSubject;
-    document.getElementById('report-val-top-subject-time').textContent = topSubject === 'None' ? '0 mins logged' : `${formatMinutes(topSubjectMins)} logged`;
-    
-    // Render logs list
-    const logsContainer = document.getElementById('report-logs-container');
-    logsContainer.innerHTML = '';
-    if (filteredLogs.length === 0) {
-        logsContainer.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No logs match the criteria.</p>`;
-    } else {
-        filteredLogs.sort((a,b) => b.date.localeCompare(a.date));
-        filteredLogs.forEach(log => {
-            const card = document.createElement('div');
-            card.className = 'log-item-card';
-            card.style.borderLeft = `4px solid ${getSubjectColorHex(log.subject)}`;
-            card.innerHTML = `
-                <div class="log-item-info" style="width: 100%;">
-                    <div class="log-subject-line">
-                        <span class="log-item-subject" style="color: ${getSubjectColorHex(log.subject)}; font-weight: 700;">${log.subject}</span>
-                        <span class="log-item-duration">${formatMinutes(log.duration)}</span>
-                    </div>
-                    <div style="font-size:0.8rem; color:var(--text-secondary);">${log.date}</div>
-                    <div class="log-item-topic" style="margin-top: 4px;">${log.topic}</div>
-                </div>
-            `;
-            logsContainer.appendChild(card);
+        
+        // Top Subject
+        const subjectMinutes = {};
+        actualBlocks.forEach(b => {
+            subjectMinutes[b.subject] = (subjectMinutes[b.subject] || 0) + b.duration;
         });
-    }
-    
-    // Render sessions list
-    const sessionsContainer = document.getElementById('report-timetable-container');
-    sessionsContainer.innerHTML = '';
-    if (filteredSessions.length === 0) {
-        sessionsContainer.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No sessions match the criteria.</p>`;
-    } else {
-        filteredSessions.forEach(session => {
-            const todayStr = new Date().toISOString().split('T')[0];
-            const isMissed = session.date && (session.date < todayStr) && !AppState.userLogs.some(log => log.date === session.date && log.subject === session.subject);
+        let topSubject = 'None';
+        let topSubjectMins = 0;
+        for (const sub in subjectMinutes) {
+            if (subjectMinutes[sub] > topSubjectMins) {
+                topSubject = sub;
+                topSubjectMins = subjectMinutes[sub];
+            }
+        }
+        
+        // Update UI Metrics
+        document.getElementById('report-val-actual').textContent = `${actualHours}h`;
+        document.getElementById('report-val-actual-subtext').textContent = `${actualBlocks.length} actual slots`;
+        document.getElementById('report-val-target').textContent = `${targetHours}h`;
+        document.getElementById('report-val-target-subtext').textContent = `${targetBlocks.length} target slots`;
+        document.getElementById('report-val-compliance').textContent = `${compliance}%`;
+        document.getElementById('report-val-compliance-subtext').textContent = `${(totalActualMinutes/60).toFixed(1)} of ${(totalTargetMinutes/60).toFixed(1)} hrs`;
+        document.getElementById('report-val-top-subject').textContent = topSubject;
+        document.getElementById('report-val-top-subject-time').textContent = topSubject === 'None' ? '0 mins logged' : `${formatMinutes(topSubjectMins)} logged`;
+        
+        // Now filter based on selected subject for grid rendering
+        if (selectedSubject !== 'ALL') {
+            const isStandard = (sub) => ['Physics', 'Chemistry', 'Mathematics', 'English'].includes(sub);
+            if (selectedSubject === 'OTHER') {
+                actualBlocks = actualBlocks.filter(b => !isStandard(b.subject));
+                targetBlocks = targetBlocks.filter(b => !isStandard(b.subject));
+            } else {
+                actualBlocks = actualBlocks.filter(b => b.subject === selectedSubject);
+                targetBlocks = targetBlocks.filter(b => b.subject === selectedSubject);
+            }
+        }
+        
+        // Render Periodic Table Grid
+        const gridContainer = document.getElementById('reports-periodic-grid-container');
+        if (gridContainer) {
+            gridContainer.innerHTML = '';
             
-            const card = document.createElement('div');
-            card.className = 'log-item-card';
-            card.style.borderLeft = `4px solid ${getSubjectColorHex(session.subject)}`;
-            if (isMissed) {
-                card.style.background = 'rgba(239, 68, 68, 0.02)';
+            const activeType = AppState.reportGridType || 'actual';
+            const blocksToRender = activeType === 'actual' ? actualBlocks : targetBlocks;
+            
+            if (blocksToRender.length === 0) {
+                gridContainer.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px 0;">No study blocks match the selected timeframe/criteria.</p>`;
+            } else {
+                // Sort by date (descending)
+                blocksToRender.sort((a, b) => b.date.localeCompare(a.date));
+                blocksToRender.forEach((block, idx) => {
+                    const cell = renderReportPeriodicCell(block, idx, activeType);
+                    gridContainer.appendChild(cell);
+                });
             }
-            card.innerHTML = `
-                <div class="log-item-info" style="width: 100%;">
-                    <div class="log-subject-line" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                        <span class="log-item-subject" style="color: ${getSubjectColorHex(session.subject)}; font-weight: 700;">${session.subject}</span>
-                        <span style="display: flex; align-items: center; gap: 8px;">
-                            ${isMissed ? `<span style="color: #ef4444; font-size: 0.75rem; font-weight: 800; background: rgba(239, 68, 68, 0.1); padding: 2px 6px; border-radius: 4px;"><i class="fa-solid fa-flag"></i> Missed</span>` : ''}
-                            <span class="log-item-duration" style="font-size: 0.8rem; color: var(--text-secondary);">${session.startTime} - ${session.endTime}</span>
-                        </span>
-                    </div>
-                    <div style="font-size:0.8rem; color:var(--text-secondary);">${getDayName(session.day)} ${session.date || ''}</div>
-                    <div class="log-item-topic" style="margin-top: 4px;">${session.lesson || 'General Study'}</div>
-                </div>
-            `;
-            sessionsContainer.appendChild(card);
-        });
+        }
+    } catch (error) {
+        console.error("Error rendering reports view:", error);
     }
+}
+
+function renderReportPeriodicCell(block, index, type) {
+    const cell = document.createElement('div');
+    cell.className = 'periodic-cell';
+    const colorHex = getSubjectColorHex(block.subject);
+    
+    cell.style.background = `color-mix(in srgb, ${colorHex} 12%, var(--card-bg-fallback, rgba(20, 20, 20, 0.4)))`;
+    cell.style.border = `1.5px solid ${colorHex}`;
+    
+    const symbol = block.subject ? block.subject.substring(0, 2).toUpperCase() : '??';
+    const durationText = `${formatMinutes(block.duration)}`;
+    const dateFormatted = block.date ? block.date.split('-').slice(1).join('/') : ''; 
+    
+    cell.innerHTML = `
+        <div class="periodic-number">${index + 1}</div>
+        <div class="periodic-time" style="color: ${colorHex}; font-weight: 700;">${dateFormatted}</div>
+        <div class="periodic-symbol" style="color: ${colorHex}; font-size: 1.25rem; font-weight: 800; margin-top: 18px;">${symbol}</div>
+        <div class="periodic-name" style="margin-top: 4px; font-weight: 600; font-size: 0.75rem;" title="${block.subject}">${block.subject}</div>
+        <div style="font-size: 0.65rem; color: var(--text-secondary); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-top: 2px;" title="${block.details || ''}">
+            ${block.details || ''}
+        </div>
+    `;
+    
+    return cell;
 }
 
 function getTargetMinutesForDateRange(startDateStr, endDateStr, subjectFilter, userTimetableList) {

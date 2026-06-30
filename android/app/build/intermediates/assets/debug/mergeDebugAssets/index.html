@@ -33,7 +33,7 @@
         <aside class="app-sidebar">
             <div class="sidebar-header">
                 <div class="app-logo">
-                    <div class="logo-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+                    <div class="logo-icon" id="logo-icon"><i class="fa-solid fa-graduation-cap"></i></div>
                     <span id="logo-text">Time Table Tracker</span>
                 </div>
                 <div class="grade-badge" id="logo-grade-badge">Grade 11</div>
@@ -47,8 +47,9 @@
                     </li>
                     <li class="nav-item" data-view="timetable" id="nav-timetable">
                         <i class="fa-solid fa-calendar-days"></i>
-                        <span>Timetable</span>
+                        <span>Create Timetable</span>
                     </li>
+
                     <li class="nav-item" data-view="logs" id="nav-logs">
                         <i class="fa-solid fa-receipt"></i>
                         <span>Study Logs</span>
@@ -73,15 +74,16 @@
                     <i class="fa-solid fa-moon"></i>
                     <span>Dark Mode</span>
                 </button>
-                <div class="user-profile" style="position: relative; width: 100%;">
+                <button id="btn-logout" class="theme-toggle-btn" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: none; margin-top: 8px;" title="Logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Logout</span>
+                </button>
+                <div class="user-profile hide">
                     <div class="user-avatar" id="profile-avatar">S</div>
                     <div class="user-info">
                         <span class="user-name" id="profile-name">Scholar Mode</span>
                         <span class="user-status" id="profile-status">11th Grade</span>
                     </div>
-                    <button id="btn-logout" class="btn btn-secondary btn-icon" style="position: absolute; right: 0; width: 32px; height: 32px; padding: 0;" title="Logout">
-                        <i class="fa-solid fa-right-from-bracket"></i>
-                    </button>
                 </div>
             </div>
         </aside>
@@ -150,6 +152,24 @@
                     <div class="card-body">
                         <div class="missed-schedules-list" id="missed-schedules-dashboard-container" style="display: flex; flex-direction: column; gap: 12px; padding: 8px 0;">
                             <!-- Dynamic missed schedules -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Timetable Periodic Table Widget -->
+                <div class="card" id="current-timetable-dashboard-card" style="margin-bottom: 24px;">
+                    <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                        <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-table-cells text-primary"></i> Current Timetable</h3>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span class="badge" id="dashboard-timetable-badge" style="background-color: var(--accent-primary); color: white; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Weekly</span>
+                            <button class="btn btn-secondary" id="btn-dashboard-manage-timetable" style="padding: 4px 10px; font-size: 0.75rem; min-height: 0;">
+                                <i class="fa-solid fa-pen-to-square"></i> Manage Timetable
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="overflow-x: auto;">
+                        <div id="dashboard-periodic-grid-container">
+                            <!-- Dynamic periodic grid mirrored from the Create Timetable view -->
                         </div>
                     </div>
                 </div>
@@ -270,40 +290,170 @@
 
             <!-- Timetable View -->
             <section id="view-timetable" class="content-view">
-                <div class="section-actions">
-                    <div class="day-selector-tabs" id="timetable-day-tabs">
-                        <button class="day-tab active" data-day="1">Mon</button>
-                        <button class="day-tab" data-day="2">Tue</button>
-                        <button class="day-tab" data-day="3">Wed</button>
-                        <button class="day-tab" data-day="4">Thu</button>
-                        <button class="day-tab" data-day="5">Fri</button>
-                        <button class="day-tab" data-day="6">Sat</button>
-                        <button class="day-tab" data-day="0">Sun</button>
+                <div class="timetable-page-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h2 style="font-size: 1.5rem; font-weight: 700; margin: 0;">Create &amp; Visualize Timetable</h2>
+                        <p class="text-secondary" style="font-size: 0.8rem; margin: 4px 0 0 0;">Build your custom weekly or monthly high-density study schedule</p>
                     </div>
-                    <button class="btn btn-primary" id="btn-add-schedule">
-                        <i class="fa-solid fa-plus"></i> Add Session
-                    </button>
+                    <div class="duration-selector-group" style="display: flex; gap: 8px; background: rgba(120, 120, 120, 0.05); padding: 4px; border-radius: 10px; border: 1px solid var(--border-color);">
+                        <button class="btn btn-secondary active" id="btn-period-week" style="padding: 6px 16px; font-size: 0.8rem; border-radius: 8px; border: none; min-height: 0;">Weekly Grid</button>
+                        <button class="btn btn-secondary" id="btn-period-month" style="padding: 6px 16px; font-size: 0.8rem; border-radius: 8px; border: none; min-height: 0;">Monthly Grid</button>
+                    </div>
                 </div>
 
-                <!-- Timetable Main Grid & Session List -->
-                <div class="timetable-layout-grid">
-                    <!-- Visual Calendar Column -->
-                    <div class="card timetable-visual-card">
-                        <div class="card-header">
-                            <h3 id="timetable-day-title">Monday's Schedule</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="timeline-visual" id="timetable-timeline">
-                                <!-- Render sessions along a 24h timeline vertically or in slots -->
-                            </div>
-                        </div>
+                <!-- Timeframe Selection Filters -->
+                <div class="timetable-filter-bar" style="display: flex; gap: 16px; align-items: center; margin-bottom: 24px; flex-wrap: wrap; background: rgba(120, 120, 120, 0.03); padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="timetable-filter-year" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Year:</label>
+                        <select id="timetable-filter-year" style="padding: 6px 12px; border-radius: 8px; background: var(--card-bg-fallback, rgba(30,30,30,0.6)); border: 1px solid var(--border-color); color: var(--text-primary); outline: none; font-size: 0.85rem;">
+                            <option value="2025">2025</option>
+                            <option value="2026" selected>2026</option>
+                            <option value="2027">2027</option>
+                        </select>
+                    </div>
+                    
+                    <div id="timetable-month-filter-group" style="display: none; align-items: center; gap: 8px;">
+                        <label for="timetable-filter-month" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Month:</label>
+                        <select id="timetable-filter-month" style="padding: 6px 12px; border-radius: 8px; background: var(--card-bg-fallback, rgba(30,30,30,0.6)); border: 1px solid var(--border-color); color: var(--text-primary); outline: none; font-size: 0.85rem;">
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
                     </div>
 
-                    <!-- Session Cards list (Detailed CRUD list) -->
-                    <div class="timetable-list-column">
-                        <h3 class="list-title">Sessions</h3>
-                        <div class="sessions-list" id="timetable-list-container">
-                            <!-- Dynamic list of detailed timetable sessions -->
+                    <div id="timetable-week-filter-group" style="display: flex; align-items: center; gap: 8px;">
+                        <label for="timetable-filter-week" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Week:</label>
+                        <select id="timetable-filter-week" style="padding: 6px 12px; border-radius: 8px; background: var(--card-bg-fallback, rgba(30,30,30,0.6)); border: 1px solid var(--border-color); color: var(--text-primary); outline: none; font-size: 0.85rem; max-width: 250px;">
+                            <!-- Dynamically populated -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="timetable-main-layout" style="display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start;">
+                    <!-- Timetable Configuration Form Card -->
+                    <div class="card" id="timetable-form-card" style="padding: 20px;">
+                        <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-calendar-plus text-primary"></i> Add Study Slot</h3>
+                        <form id="create-timetable-form" class="vertical-form">
+                            <input type="hidden" id="create-schedule-id">
+                            
+                            <!-- Dynamic Day/Date Selection -->
+                            <div class="form-group" id="group-create-day">
+                                <label for="create-schedule-day">Day of the Week</label>
+                                <select id="create-schedule-day" required>
+                                    <option value="" disabled selected>Select Day</option>
+                                    <option value="1">Monday</option>
+                                    <option value="2">Tuesday</option>
+                                    <option value="3">Wednesday</option>
+                                    <option value="4">Thursday</option>
+                                    <option value="5">Friday</option>
+                                    <option value="6">Saturday</option>
+                                    <option value="0">Sunday</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group hide" id="group-create-date">
+                                <label for="create-schedule-date">Date Selection</label>
+                                <input type="date" id="create-schedule-date">
+                            </div>
+
+                            <!-- Subject Field -->
+                            <div class="form-group">
+                                <label>Subject</label>
+                                <select id="create-subject-select">
+                                    <option value="" disabled selected>Select Subject</option>
+                                    <option value="Physics">Physics</option>
+                                    <option value="Chemistry">Chemistry</option>
+                                    <option value="Mathematics">Mathematics</option>
+                                    <option value="Biology">Biology</option>
+                                    <option value="English">English</option>
+                                </select>
+                                <input type="text" id="create-subject-input" placeholder="Type Subject Name" class="hide">
+                            </div>
+
+                            <!-- Lesson / Topic Name -->
+                            <div class="form-group">
+                                <label for="create-schedule-lesson">Lesson / Topic Name</label>
+                                <input type="text" id="create-schedule-lesson" placeholder="e.g. Laws of Motion" required>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label for="create-schedule-notes">Notes / Instructions</label>
+                                <input type="text" id="create-schedule-notes" placeholder="e.g. Solve exercises 1-10">
+                            </div>
+
+                            <!-- Time Selection -->
+                            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <div class="form-group">
+                                    <label for="create-schedule-start-time">Start Time</label>
+                                    <input type="time" id="create-schedule-start-time" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="create-schedule-end-time">End Time</label>
+                                    <input type="time" id="create-schedule-end-time" required>
+                                </div>
+                            </div>
+
+                            <!-- Color Selector -->
+                            <div class="form-group">
+                                <label>Color Tag</label>
+                                <div class="color-picker-grid" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;">
+                                    <label class="color-radio-label">
+                                        <input type="radio" name="create-schedule-color" value="physics-blue" checked>
+                                        <span class="color-radio-dot physics-blue"></span>
+                                    </label>
+                                    <label class="color-radio-label">
+                                        <input type="radio" name="create-schedule-color" value="chemistry-purple">
+                                        <span class="color-radio-dot chemistry-purple"></span>
+                                    </label>
+                                    <label class="color-radio-label">
+                                        <input type="radio" name="create-schedule-color" value="math-red">
+                                        <span class="color-radio-dot math-red"></span>
+                                    </label>
+                                    <label class="color-radio-label">
+                                        <input type="radio" name="create-schedule-color" value="biology-green">
+                                        <span class="color-radio-dot biology-green"></span>
+                                    </label>
+                                    <label class="color-radio-label">
+                                        <input type="radio" name="create-schedule-color" value="english-yellow">
+                                        <span class="color-radio-dot english-yellow"></span>
+                                    </label>
+                                    <label class="color-radio-label">
+                                        <input type="radio" name="create-schedule-color" value="other-gray">
+                                        <span class="color-radio-dot other-gray"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div id="create-timetable-error-msg" class="auth-error hide" style="color: var(--color-math); font-size: 0.8rem; font-weight: 500; margin-bottom: 12px;"></div>
+
+                            <div style="display: flex; gap: 8px; margin-top: 16px;">
+                                <button type="button" class="btn btn-danger hide" id="btn-delete-create-slot" style="flex: 1;"><i class="fa-solid fa-trash"></i> Delete</button>
+                                <button type="button" class="btn btn-secondary" id="btn-reset-create-form" style="flex: 1;">Reset</button>
+                                <button type="submit" class="btn btn-primary" id="btn-save-create-slot" style="flex: 2;"><i class="fa-solid fa-circle-check"></i> Save Slot</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Periodic Table Grid Visualization -->
+                    <div class="card" style="padding: 20px; overflow-x: auto;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-table-cells text-warning"></i> Periodic Table Visualization</h3>
+                            <span class="text-secondary" style="font-size: 0.75rem;">Click any slot to edit or delete</span>
+                        </div>
+                        
+                        <!-- Dynamic Visualization Grid Container -->
+                        <div id="periodic-table-grid-container">
+                            <!-- Injected dynamically via JS: Weekly or Monthly grid -->
                         </div>
                     </div>
                 </div>
@@ -464,29 +614,18 @@
                     </div>
                 </div>
 
-                <!-- Reports Detailed Lists -->
-                <div class="logs-layout-grid">
-                    <!-- Study Logs Report -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3><i class="fa-solid fa-receipt text-success"></i> Log Details</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="log-history-list" id="report-logs-container" style="max-height: 400px; overflow-y: auto;">
-                                <!-- Dynamic filtered list of study logs -->
-                            </div>
+                <!-- Reports Periodic Table Visualization -->
+                <div class="card" style="margin-top: 24px; padding: 20px;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                        <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-table text-success"></i> Periodic Table Reports Visualization</h3>
+                        <div class="duration-selector-group" id="reports-grid-type-toggle" style="display: flex; gap: 8px; background: rgba(120, 120, 120, 0.05); padding: 4px; border-radius: 10px; border: 1px solid var(--border-color);">
+                            <button class="btn btn-secondary active" id="btn-report-type-actual" style="padding: 6px 16px; font-size: 0.8rem; border-radius: 8px; border: none; min-height: 0;">Completed (Actual)</button>
+                            <button class="btn btn-secondary" id="btn-report-type-target" style="padding: 6px 16px; font-size: 0.8rem; border-radius: 8px; border: none; min-height: 0;">Scheduled (Target)</button>
                         </div>
                     </div>
-
-                    <!-- Timetable Report -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3><i class="fa-solid fa-calendar-days text-primary"></i> Scheduled Sessions</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="log-history-list" id="report-timetable-container" style="max-height: 400px; overflow-y: auto;">
-                                <!-- Dynamic filtered list of scheduled sessions -->
-                            </div>
+                    <div class="card-body">
+                        <div id="reports-periodic-grid-container" class="periodic-reports-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 16px;">
+                            <!-- Periodic cells injected here -->
                         </div>
                     </div>
                 </div>

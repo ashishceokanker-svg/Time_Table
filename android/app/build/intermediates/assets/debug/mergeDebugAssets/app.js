@@ -16,6 +16,8 @@ const AppState = {
     editingScheduleId: null,
     currentUploadedFile: null,
     dashboardPeriod: 'week',
+    timetablePeriod: 'week',
+    reportGridType: 'actual',
     
     // User-specific isolated views of the data
     get userTimetable() {
@@ -76,6 +78,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     initApp();
     setupEventListeners();
     await loadDatabase();
+    
+    // Switch to target view if requested via URL param (cross-page routing)
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetView = urlParams.get('view');
+    if (targetView && AppState.currentUser) {
+        switchView(targetView);
+    }
 });
 
 function initApp() {
@@ -244,7 +253,7 @@ function saveToLocalStorage(key) {
 }
 
 // Base API URL resolver: points to absolute Vercel deployment URL if loaded as local file:/// (inside Android app)
-const API_BASE = window.location.protocol === 'file:' ? 'https://timetable-tau-six.vercel.app' : '';
+const API_BASE = 'https://timetable-tau-six.vercel.app';
 
 async function saveToDatabase(key, data) {
     try {
@@ -258,9 +267,12 @@ async function saveToDatabase(key, data) {
         if (!response.ok) {
             const errBody = await response.json().catch(() => ({}));
             console.error(`Failed to save ${key} to cloud database:`, errBody.error || response.statusText);
+            return false;
         }
+        return true;
     } catch (error) {
         console.error(`Network error saving ${key} to cloud database:`, error);
+        return false;
     }
 }
 
@@ -401,22 +413,97 @@ function setupEventListeners() {
 
     // Timetable Day selection tabs
     const dayTabs = document.getElementById('timetable-day-tabs');
-    dayTabs.addEventListener('click', (e) => {
-        if (e.target.classList.contains('day-tab')) {
-            // Remove active class from all tabs
-            dayTabs.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
-            // Add to clicked tab
-            e.target.classList.add('active');
-            AppState.selectedTimetableDay = parseInt(e.target.getAttribute('data-day'));
-            renderTimetableView();
-        }
-    });
+    if (dayTabs) {
+        dayTabs.addEventListener('click', (e) => {
+            if (e.target.classList.contains('day-tab')) {
+                // Remove active class from all tabs
+                dayTabs.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+                // Add to clicked tab
+                e.target.classList.add('active');
+                AppState.selectedTimetableDay = parseInt(e.target.getAttribute('data-day'));
+                renderTimetableView();
+            }
+        });
+    }
 
     // Timetable add session triggers
-    document.getElementById('btn-add-schedule').addEventListener('click', () => openScheduleModal());
-    document.getElementById('btn-close-schedule-modal').addEventListener('click', closeScheduleModal);
-    document.getElementById('btn-cancel-schedule').addEventListener('click', closeScheduleModal);
-    document.getElementById('schedule-session-form').addEventListener('submit', handleScheduleFormSubmit);
+    const btnAddSched = document.getElementById('btn-add-schedule');
+    if (btnAddSched) {
+        btnAddSched.addEventListener('click', () => openScheduleModal());
+    }
+    
+    const btnCloseSched = document.getElementById('btn-close-schedule-modal');
+    if (btnCloseSched) btnCloseSched.addEventListener('click', closeScheduleModal);
+    
+    const btnCancelSched = document.getElementById('btn-cancel-schedule');
+    if (btnCancelSched) btnCancelSched.addEventListener('click', closeScheduleModal);
+    
+    const schedForm = document.getElementById('schedule-session-form');
+    if (schedForm) schedForm.addEventListener('submit', handleScheduleFormSubmit);
+
+    // Create Timetable page toggles & forms
+    const btnPeriodWeek = document.getElementById('btn-period-week');
+    const btnPeriodMonth = document.getElementById('btn-period-month');
+    if (btnPeriodWeek && btnPeriodMonth) {
+        btnPeriodWeek.addEventListener('click', () => {
+            btnPeriodWeek.classList.add('active');
+            btnPeriodMonth.classList.remove('active');
+            document.getElementById('group-create-day').classList.remove('hide');
+            document.getElementById('group-create-date').classList.add('hide');
+            document.getElementById('create-schedule-day').required = true;
+            document.getElementById('create-schedule-date').required = false;
+            document.getElementById('create-schedule-date').value = '';
+            
+            // Timeframe filters toggle
+            document.getElementById('timetable-month-filter-group').style.display = 'none';
+            document.getElementById('timetable-week-filter-group').style.display = 'flex';
+            
+            AppState.timetablePeriod = 'week';
+            fetchTimetableForTimeframe();
+        });
+        
+        btnPeriodMonth.addEventListener('click', () => {
+            btnPeriodMonth.classList.add('active');
+            btnPeriodWeek.classList.remove('active');
+            document.getElementById('group-create-day').classList.add('hide');
+            document.getElementById('group-create-date').classList.remove('hide');
+            document.getElementById('create-schedule-day').required = false;
+            document.getElementById('create-schedule-day').value = '';
+            document.getElementById('create-schedule-date').required = true;
+            
+            // Timeframe filters toggle
+            document.getElementById('timetable-month-filter-group').style.display = 'flex';
+            document.getElementById('timetable-week-filter-group').style.display = 'none';
+            
+            AppState.timetablePeriod = 'month';
+            fetchTimetableForTimeframe();
+        });
+    }
+
+    const btnResetCreate = document.getElementById('btn-reset-create-form');
+    if (btnResetCreate) {
+        btnResetCreate.addEventListener('click', resetCreateTimetableForm);
+    }
+
+    const btnDeleteCreate = document.getElementById('btn-delete-create-slot');
+    if (btnDeleteCreate) {
+        btnDeleteCreate.addEventListener('click', () => {
+            const id = document.getElementById('create-schedule-id').value;
+            if (id) deleteCreateTimetableSession(id);
+        });
+    }
+
+    const createTimetableForm = document.getElementById('create-timetable-form');
+    if (createTimetableForm) {
+        createTimetableForm.addEventListener('submit', handleCreateFormSubmit);
+    }
+
+    const btnDashboardManage = document.getElementById('btn-dashboard-manage-timetable');
+    if (btnDashboardManage) {
+        btnDashboardManage.addEventListener('click', () => {
+            switchView('timetable');
+        });
+    }
 
     // Study Log Form Submit
     document.getElementById('study-log-form').addEventListener('submit', handleLogFormSubmit);
@@ -467,6 +554,27 @@ function setupEventListeners() {
             }
         });
     }
+
+    // Reports Grid Toggle buttons
+    const btnReportTypeActual = document.getElementById('btn-report-type-actual');
+    const btnReportTypeTarget = document.getElementById('btn-report-type-target');
+    if (btnReportTypeActual && btnReportTypeTarget) {
+        btnReportTypeActual.addEventListener('click', () => {
+            btnReportTypeActual.classList.add('active');
+            btnReportTypeTarget.classList.remove('active');
+            AppState.reportGridType = 'actual';
+            renderReportsView();
+        });
+        btnReportTypeTarget.addEventListener('click', () => {
+            btnReportTypeTarget.classList.add('active');
+            btnReportTypeActual.classList.remove('active');
+            AppState.reportGridType = 'target';
+            renderReportsView();
+        });
+    }
+
+    // Initialize timeframe filters for grids
+    initTimeframeFilters();
 }
 
 function setupAuthEvents() {
@@ -641,10 +749,33 @@ function setupAuthEvents() {
         };
 
         AppState.users.push(newUser);
-        saveToLocalStorage('users');
 
-        successDiv.textContent = "Registration submitted! Your account is pending administrator approval.";
+        // Await saveToDatabase to ensure the user is registered in the cloud database.
+        const success = await saveToDatabase('users', AppState.users);
+        if (!success) {
+            AppState.users.pop(); // rollback
+            errorDiv.textContent = "Error: Failed to save registration to server database. Please try again.";
+            errorDiv.classList.remove('hide');
+            return;
+        }
+
+        // Save locally to localStorage now that backend sync was successful
+        try {
+            localStorage.setItem('anti_gravity_users', JSON.stringify(AppState.users));
+        } catch (e) {
+            console.warn("Storage quota warning for users:", e);
+        }
+
+        successDiv.innerHTML = `Registration submitted! Your account is pending administrator approval. <a href="#" id="success-login-link" style="color: var(--accent-primary); font-weight: 700; text-decoration: underline; margin-left: 5px;">Click here to Login</a>`;
         successDiv.classList.remove('hide');
+
+        const successLink = document.getElementById('success-login-link');
+        if (successLink) {
+            successLink.addEventListener('click', (event) => {
+                event.preventDefault();
+                card.classList.remove('active');
+            });
+        }
 
         // Reset form
         registerForm.reset();
@@ -738,20 +869,39 @@ function updateSubjectInputsForClass() {
     const schedSelect = document.getElementById('schedule-subject-select');
     const schedInput = document.getElementById('schedule-subject-input');
     
-    if (!schedSelect || !schedInput) return;
+    if (schedSelect && schedInput) {
+        if (isSenior) {
+            schedSelect.classList.remove('hide');
+            schedSelect.required = true;
+            schedInput.classList.add('hide');
+            schedInput.required = false;
+            schedInput.value = '';
+        } else {
+            schedInput.classList.remove('hide');
+            schedInput.required = true;
+            schedSelect.classList.add('hide');
+            schedSelect.required = false;
+            schedSelect.value = '';
+        }
+    }
+
+    const createSelect = document.getElementById('create-subject-select');
+    const createInput = document.getElementById('create-subject-input');
     
-    if (isSenior) {
-        schedSelect.classList.remove('hide');
-        schedSelect.required = true;
-        schedInput.classList.add('hide');
-        schedInput.required = false;
-        schedInput.value = '';
-    } else {
-        schedInput.classList.remove('hide');
-        schedInput.required = true;
-        schedSelect.classList.add('hide');
-        schedSelect.required = false;
-        schedSelect.value = '';
+    if (createSelect && createInput) {
+        if (isSenior) {
+            createSelect.classList.remove('hide');
+            createSelect.required = true;
+            createInput.classList.add('hide');
+            createInput.required = false;
+            createInput.value = '';
+        } else {
+            createInput.classList.remove('hide');
+            createInput.required = true;
+            createSelect.classList.add('hide');
+            createSelect.required = false;
+            createSelect.value = '';
+        }
     }
 }
 
@@ -767,6 +917,14 @@ function checkAuthState() {
         document.getElementById('logo-text').textContent = 'Time Table Tracker';
         document.getElementById('logo-grade-badge').textContent = 'Grade 11';
         document.getElementById('logo-grade-badge').style.display = 'block';
+        
+        // Reset logo icon to default graduation cap
+        const logoIcon = document.getElementById('logo-icon');
+        if (logoIcon) {
+            logoIcon.innerHTML = '<i class="fa-solid fa-graduation-cap"></i>';
+            logoIcon.style.background = '';
+            logoIcon.style.boxShadow = '';
+        }
         
         updateDocumentTitle('login');
     } else {
@@ -790,6 +948,20 @@ function checkAuthState() {
             avatarDiv.innerHTML = `<img src="${AppState.currentUser.profilePhoto}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />`;
         } else {
             avatarDiv.textContent = AppState.currentUser.username.charAt(0).toUpperCase();
+        }
+
+        // Update profile photo in the sidebar header logo icon
+        const headerLogoIcon = document.getElementById('logo-icon');
+        if (headerLogoIcon) {
+            if (AppState.currentUser.profilePhoto) {
+                headerLogoIcon.innerHTML = `<img src="${AppState.currentUser.profilePhoto}" style="width: 100%; height: 100%; border-radius: inherit; object-fit: cover;" />`;
+                headerLogoIcon.style.background = 'none'; // clear gradient if image exists
+                headerLogoIcon.style.boxShadow = 'none';
+            } else {
+                headerLogoIcon.innerHTML = `<span style="font-weight: 700; font-family: var(--font-display);">${AppState.currentUser.username.charAt(0).toUpperCase()}</span>`;
+                headerLogoIcon.style.background = 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)'; // use avatar gradient
+                headerLogoIcon.style.boxShadow = '0 4px 10px rgba(245, 158, 11, 0.2)';
+            }
         }
 
         // Render admin panel and reports tab visibility
@@ -837,7 +1009,7 @@ function switchView(viewName) {
     if (viewName === 'dashboard') {
         renderDashboardView();
     } else if (viewName === 'timetable') {
-        renderTimetableView();
+        fetchTimetableForTimeframe();
     } else if (viewName === 'logs') {
         renderLogsView();
     } else if (viewName === 'reports') {
@@ -1394,6 +1566,9 @@ function renderDashboardView() {
 
     // Render Subject-wise SVG Donut/Pie Chart
     renderSubjectPieChart(subjectMinutes);
+
+    // Render Dashboard Mirror Timetable Widget
+    renderDashboardTimetable();
 }
 
 function renderMissedSchedulesDashboard() {
@@ -1695,139 +1870,496 @@ function renderSubjectBreakdownList(subjectMinutes) {
 }
 
 
-// --- TIMETABLE VIEW LOGIC ---
-function renderTimetableView() {
-    const dayVal = AppState.selectedTimetableDay;
-    document.getElementById('timetable-day-title').textContent = `${getDayName(dayVal)}'s Schedule`;
+// --- TIMETABLE TIMEFRAME FILTER OPERATIONS ---
+let _timeframeFiltersInitialized = false;
 
-    // Render detailed CRUD list
-    renderTimetableDetailedList(dayVal);
-
-    // Render 24h Visual timeline representation
-    renderTimetableTimeline(dayVal);
+function initTimeframeFilters() {
+    if (_timeframeFiltersInitialized) return;
+    const yearSelect = document.getElementById('timetable-filter-year');
+    const monthSelect = document.getElementById('timetable-filter-month');
+    const weekSelect = document.getElementById('timetable-filter-week');
+    
+    if (!yearSelect || !monthSelect || !weekSelect) return;
+    
+    _timeframeFiltersInitialized = true;
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-indexed
+    
+    yearSelect.value = currentYear;
+    monthSelect.value = currentMonth;
+    
+    populateWeeksDropdown(currentYear);
+    const currentWeekNo = getISOWeekNumber(now);
+    weekSelect.value = currentWeekNo;
+    
+    yearSelect.addEventListener('change', () => {
+        populateWeeksDropdown(yearSelect.value);
+        fetchTimetableForTimeframe();
+    });
+    monthSelect.addEventListener('change', fetchTimetableForTimeframe);
+    weekSelect.addEventListener('change', fetchTimetableForTimeframe);
 }
 
-function renderTimetableDetailedList(dayVal) {
-    const container = document.getElementById('timetable-list-container');
+function getISOWeekNumber(date) {
+    const tempDate = new Date(date.valueOf());
+    tempDate.setDate(tempDate.getDate() + 4 - (tempDate.getDay() || 7));
+    const yearStart = new Date(tempDate.getFullYear(), 0, 1);
+    const weekNo = Math.ceil((((tempDate - yearStart) / 86400000) + 1) / 7);
+    return weekNo;
+}
+
+function getDatesOfWeek(year, week) {
+    const simple = new Date(year, 0, 1 + (week - 1) * 7);
+    const dayOfWeek = simple.getDay();
+    const ISOweekStart = new Date(simple);
+    if (dayOfWeek <= 4) {
+        ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+    } else {
+        ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+    }
+    const ISOweekEnd = new Date(ISOweekStart);
+    ISOweekEnd.setDate(ISOweekStart.getDate() + 6);
+    
+    return {
+        startStr: ISOweekStart.toISOString().split('T')[0],
+        endStr: ISOweekEnd.toISOString().split('T')[0]
+    };
+}
+
+function populateWeeksDropdown(year) {
+    const weekSelect = document.getElementById('timetable-filter-week');
+    if (!weekSelect) return;
+    const prevValue = weekSelect.value;
+    weekSelect.innerHTML = '';
+    
+    for (let w = 1; w <= 53; w++) {
+        const { startStr, endStr } = getDatesOfWeek(year, w);
+        const startDate = new Date(startStr);
+        if (w === 53 && startDate.getFullYear() > year) {
+            break;
+        }
+        
+        const option = document.createElement('option');
+        option.value = w;
+        
+        const formatMonthDay = (date) => {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        };
+        option.textContent = `Week ${w} (${formatMonthDay(startDate)} - ${formatMonthDay(new Date(endStr))})`;
+        weekSelect.appendChild(option);
+    }
+    
+    if (prevValue && weekSelect.querySelector(`option[value="${prevValue}"]`)) {
+        weekSelect.value = prevValue;
+    }
+}
+
+async function fetchTimetableForTimeframe() {
+    const yearSelect = document.getElementById('timetable-filter-year');
+    const monthSelect = document.getElementById('timetable-filter-month');
+    const weekSelect = document.getElementById('timetable-filter-week');
+    
+    if (!yearSelect || !monthSelect || !weekSelect || !AppState.currentUser) return;
+    
+    const year = yearSelect.value;
+    const month = monthSelect.value;
+    const week = weekSelect.value;
+    
+    let queryParams = `?username=${encodeURIComponent(AppState.currentUser.username)}&year=${year}`;
+    if (AppState.timetablePeriod === 'week') {
+        queryParams += `&week=${week}`;
+    } else {
+        queryParams += `&month=${month}`;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/db${queryParams}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch database: ${response.statusText}`);
+        }
+        const data = await response.json();
+        
+        if (data.timetable && Array.isArray(data.timetable)) {
+            AppState.userTimetable = data.timetable.filter(s => s.username.toLowerCase() === AppState.currentUser.username.toLowerCase() || s.username.toLowerCase() === 'admin');
+        }
+        if (data.logs && Array.isArray(data.logs)) {
+            AppState.userLogs = data.logs.filter(l => l.username.toLowerCase() === AppState.currentUser.username.toLowerCase());
+        }
+        
+        renderTimetableView();
+        renderDashboardTimetable();
+    } catch (error) {
+        console.error('Error fetching timeframe filtered timetable:', error);
+    }
+}
+
+
+// --- TIMETABLE VIEW LOGIC ---
+// --- TIMETABLE VIEW LOGIC ---
+function renderTimetableView() {
+    const container = document.getElementById('periodic-table-grid-container');
+    if (!container) return;
     container.innerHTML = '';
 
-    // Filter sessions for selected day
-    const daySessions = AppState.userTimetable.filter(s => s.day == dayVal);
+    if (AppState.timetablePeriod === 'week') {
+        renderWeeklyTimetable(container);
+    } else {
+        renderMonthlyTimetable(container);
+    }
+}
 
-    if (daySessions.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <i class="fa-solid fa-calendar-xmark"></i>
-                <p>No study sessions scheduled for this day.</p>
-                <p style="font-size:0.75rem; margin-top:4px;">Tap "Add Session" to set your targets.</p>
-            </div>
-        `;
+function renderWeeklyTimetable(container) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'periodic-table-weekly';
+    
+    const days = [
+        { name: 'Monday', index: 1 },
+        { name: 'Tuesday', index: 2 },
+        { name: 'Wednesday', index: 3 },
+        { name: 'Thursday', index: 4 },
+        { name: 'Friday', index: 5 },
+        { name: 'Saturday', index: 6 },
+        { name: 'Sunday', index: 0 }
+    ];
+
+    days.forEach(dayObj => {
+        const col = document.createElement('div');
+        col.style.display = 'flex';
+        col.style.flexDirection = 'column';
+        
+        const header = document.createElement('div');
+        header.className = 'periodic-table-column-header';
+        header.textContent = dayObj.name.substring(0, 3);
+        col.appendChild(header);
+        
+        const cellsWrapper = document.createElement('div');
+        cellsWrapper.className = 'periodic-table-column-cells';
+        
+        const daySessions = AppState.userTimetable.filter(s => s.day == dayObj.index);
+        
+        if (daySessions.length === 0) {
+            const emptyCell = document.createElement('div');
+            emptyCell.className = 'periodic-cell periodic-cell-empty';
+            emptyCell.innerHTML = `
+                <div class="periodic-symbol" style="font-size: 1rem; opacity: 0.2;"><i class="fa-solid fa-bed"></i></div>
+                <div class="periodic-name" style="opacity: 0.4;">Free Day</div>
+            `;
+            cellsWrapper.appendChild(emptyCell);
+        } else {
+            // Sort by start time
+            daySessions.sort((a, b) => a.startTime.localeCompare(b.startTime));
+            daySessions.forEach((session, idx) => {
+                const cell = renderPeriodicCell(session, idx);
+                cellsWrapper.appendChild(cell);
+            });
+        }
+        
+        col.appendChild(cellsWrapper);
+        wrapper.appendChild(col);
+    });
+
+    container.appendChild(wrapper);
+}
+
+function renderMonthlyTimetable(container) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'periodic-table-monthly';
+    
+    // Header row
+    const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    weekDays.forEach(wd => {
+        const header = document.createElement('div');
+        header.className = 'periodic-month-header';
+        header.textContent = wd;
+        wrapper.appendChild(header);
+    });
+
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    
+    const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday, 1 is Monday...
+    // Normalize firstDayIndex so Monday is 0, Sunday is 6
+    const offset = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+    const totalDays = new Date(year, month + 1, 0).getDate();
+
+    // Render offsets
+    for (let i = 0; i < offset; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'month-day-cell';
+        emptyCell.style.opacity = '0.35';
+        emptyCell.style.borderStyle = 'dashed';
+        wrapper.appendChild(emptyCell);
+    }
+
+    // Render calendar days
+    const todayStr = d.toISOString().split('T')[0];
+    
+    for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+        
+        const cell = document.createElement('div');
+        cell.className = 'month-day-cell';
+        if (dateStr === todayStr) {
+            cell.classList.add('today');
+        }
+        
+        const dayNumberLabel = document.createElement('div');
+        dayNumberLabel.className = 'day-number';
+        dayNumberLabel.textContent = dayNum;
+        cell.appendChild(dayNumberLabel);
+        
+        const daySessions = AppState.userTimetable.filter(s => s.date === dateStr);
+        
+        daySessions.forEach(session => {
+            const pill = document.createElement('div');
+            const colorHex = getSubjectColorHex(session.subject);
+            pill.className = 'month-session-pill';
+            pill.style.background = `color-mix(in srgb, ${colorHex} 15%, transparent)`;
+            pill.style.border = `1px solid ${colorHex}`;
+            pill.style.color = colorHex;
+            
+            // Abbreviation
+            const symbol = session.subject ? session.subject.substring(0, 2).toUpperCase() : '??';
+            pill.textContent = `${symbol}: ${session.startTime}`;
+            pill.title = `${session.subject}: ${session.lesson || 'Study'}\nTime: ${session.startTime} - ${session.endTime}`;
+            
+            pill.addEventListener('click', (e) => {
+                e.stopPropagation();
+                editCreateTimetableSession(session);
+            });
+            
+            cell.appendChild(pill);
+        });
+
+        // Click on day cell autofills form date
+        cell.addEventListener('click', () => {
+            resetCreateTimetableForm();
+            if (AppState.timetablePeriod === 'month') {
+                document.getElementById('create-schedule-date').value = dateStr;
+            }
+        });
+        
+        wrapper.appendChild(cell);
+    }
+
+    container.appendChild(wrapper);
+}
+
+function renderPeriodicCell(session, index) {
+    const cell = document.createElement('div');
+    cell.className = 'periodic-cell';
+    const colorHex = getSubjectColorHex(session.subject);
+    
+    cell.style.background = `color-mix(in srgb, ${colorHex} 12%, var(--card-bg-fallback, rgba(20, 20, 20, 0.4)))`;
+    cell.style.border = `1.5px solid ${colorHex}`;
+    
+    const symbol = session.subject ? session.subject.substring(0, 2).toUpperCase() : '??';
+    
+    cell.innerHTML = `
+        <div class="periodic-number">${index + 1}</div>
+        <div class="periodic-time" style="color: ${colorHex};">${session.startTime}</div>
+        <div class="periodic-symbol" style="color: ${colorHex};">${symbol}</div>
+        <div class="periodic-name" title="${session.lesson || 'Study'}">${session.lesson || 'Study'}</div>
+    `;
+    
+    cell.addEventListener('click', () => {
+        editCreateTimetableSession(session);
+    });
+    
+    return cell;
+}
+
+// --- CREATE TIMETABLE CRUD OPERATIONS ---
+function showCreateTimetableError(msg) {
+    const errorDiv = document.getElementById('create-timetable-error-msg');
+    if (errorDiv) {
+        errorDiv.textContent = msg;
+        errorDiv.classList.remove('hide');
+    }
+}
+
+function hideCreateTimetableError() {
+    const errorDiv = document.getElementById('create-timetable-error-msg');
+    if (errorDiv) {
+        errorDiv.classList.add('hide');
+        errorDiv.textContent = '';
+    }
+}
+
+function resetCreateTimetableForm() {
+    document.getElementById('create-schedule-id').value = '';
+    document.getElementById('create-schedule-day').value = '';
+    document.getElementById('create-schedule-date').value = '';
+    
+    document.getElementById('create-subject-select').value = '';
+    document.getElementById('create-subject-input').value = '';
+    document.getElementById('create-schedule-lesson').value = '';
+    document.getElementById('create-schedule-notes').value = '';
+    
+    // Reset color to first one
+    const firstRadio = document.querySelector('input[name="create-schedule-color"]');
+    if (firstRadio) firstRadio.checked = true;
+    
+    // Set button label back to "Save Slot"
+    document.getElementById('btn-save-create-slot').innerHTML = '<i class="fa-solid fa-circle-check"></i> Save Slot';
+    
+    // Hide delete button
+    const deleteBtn = document.getElementById('btn-delete-create-slot');
+    if (deleteBtn) deleteBtn.classList.add('hide');
+    
+    // Reset inputs required state based on active view period
+    if (AppState.timetablePeriod === 'week') {
+        document.getElementById('create-schedule-day').required = true;
+        document.getElementById('create-schedule-date').required = false;
+    } else {
+        document.getElementById('create-schedule-day').required = false;
+        document.getElementById('create-schedule-date').required = true;
+    }
+    
+    hideCreateTimetableError();
+}
+
+async function handleCreateFormSubmit(e) {
+    e.preventDefault();
+    hideCreateTimetableError();
+
+    const user = AppState.currentUser;
+    if (!user) {
+        showCreateTimetableError("You must be logged in to create timetable slots.");
         return;
     }
 
-    // Sort by start time
-    daySessions.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const isSenior = (user.classGrade === '11th' || user.classGrade === '12th' || user.classGrade === 'Admin');
+    const subject = isSenior 
+        ? document.getElementById('create-subject-select').value 
+        : document.getElementById('create-subject-input').value.trim();
 
-    daySessions.forEach(session => {
-        const card = document.createElement('div');
-        const colorHex = getSubjectColorHex(session.subject);
-        card.className = `session-crud-card`;
-        card.style.borderLeft = `5px solid ${colorHex}`;
-        card.innerHTML = `
-            <div class="session-crud-info">
-                <div class="session-subject-row">
-                    <span class="session-subject" style="color: ${colorHex};">${session.subject}</span>
-                    <span class="session-time-badge">${session.startTime} - ${session.endTime}</span>
-                </div>
-                <div class="session-meta-row" style="font-size: 0.8rem; margin: 4px 0; color: var(--text-secondary);">
-                    <i class="fa-solid fa-calendar-day" style="margin-right: 4px;"></i>${session.date || ''} &nbsp;&bull;&nbsp; 
-                    <i class="fa-solid fa-graduation-cap" style="margin-right: 4px;"></i><strong>Topic:</strong> ${session.lesson || 'General Study'}
-                </div>
-                <div class="session-notes" style="font-size: 0.75rem; opacity: 0.85;">${session.notes || 'No notes added'}</div>
-            </div>
-            <div class="session-actions-btns">
-                <button class="btn btn-secondary btn-icon btn-edit-schedule" data-id="${session.id}" title="Edit">
-                    <i class="fa-solid fa-pen"></i>
-                </button>
-                <button class="btn btn-danger btn-icon btn-delete-schedule" data-id="${session.id}" title="Delete">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
-            </div>
-        `;
-
-        // Wire buttons
-        card.querySelector('.btn-edit-schedule').addEventListener('click', () => openScheduleModal(session.id));
-        card.querySelector('.btn-delete-schedule').addEventListener('click', () => deleteScheduleSession(session.id));
-
-        container.appendChild(card);
-    });
-}
-
-function renderTimetableTimeline(dayVal) {
-    const container = document.getElementById('timetable-timeline');
-    container.innerHTML = '';
-
-    const daySessions = AppState.userTimetable.filter(s => s.day == dayVal);
-
-    // Timeline spans from 6:00 (6 AM) to 23:00 (11 PM) to focus on study hours
-    const START_HOUR = 6;
-    const END_HOUR = 23;
-    const TOTAL_HOURS = END_HOUR - START_HOUR;
-    const ROW_HEIGHT = 45; // Height in px for 1 hour
-
-    // Set timeline container height
-    container.style.height = `${TOTAL_HOURS * ROW_HEIGHT}px`;
-
-    // 1. Render hour markers and grid lines
-    for (let h = START_HOUR; h <= END_HOUR; h++) {
-        const topPos = (h - START_HOUR) * ROW_HEIGHT;
-        
-        // Hour marker label
-        const marker = document.createElement('div');
-        marker.className = 'timeline-hour-marker';
-        const formattedHour = h > 12 ? `${h - 12} PM` : h === 12 ? '12 PM' : `${h} AM`;
-        marker.textContent = formattedHour;
-        marker.style.top = `${topPos}px`;
-        container.appendChild(marker);
-        
-        // Gridline
-        const gridLine = document.createElement('div');
-        gridLine.className = 'timeline-grid-line';
-        gridLine.style.top = `${topPos}px`;
-        container.appendChild(gridLine);
+    if (!subject) {
+        showCreateTimetableError("Please enter or select a subject.");
+        return;
     }
 
-    // 2. Render visual sessions as absolute elements inside the timeline
-    daySessions.forEach(session => {
-        const startDec = timeStringToDecimal(session.startTime);
-        const endDec = timeStringToDecimal(session.endTime);
+    const startTime = document.getElementById('create-schedule-start-time').value;
+    const endTime = document.getElementById('create-schedule-end-time').value;
+    const lesson = document.getElementById('create-schedule-lesson').value.trim();
+    const notes = document.getElementById('create-schedule-notes').value.trim();
+    const color = document.querySelector('input[name="create-schedule-color"]:checked').value;
+    
+    if (startTime >= endTime) {
+        showCreateTimetableError("Start time must be before end time!");
+        return;
+    }
 
-        // Clamp session hours into visual range (6 AM to 11 PM)
-        const displayStart = Math.max(START_HOUR, startDec);
-        const displayEnd = Math.min(END_HOUR, endDec);
-
-        if (displayEnd > displayStart) {
-            const topPos = (displayStart - START_HOUR) * ROW_HEIGHT;
-            const heightSize = (displayEnd - displayStart) * ROW_HEIGHT;
-
-            const sessionDiv = document.createElement('div');
-            const colorHex = getSubjectColorHex(session.subject);
-            sessionDiv.className = `timeline-visual-session`;
-            
-            sessionDiv.style.backgroundColor = `color-mix(in srgb, ${colorHex} 15%, transparent)`;
-            sessionDiv.style.borderLeft = `4px solid ${colorHex}`;
-            sessionDiv.style.top = `${topPos}px`;
-            sessionDiv.style.height = `${heightSize}px`;
-
-            sessionDiv.innerHTML = `
-                <div class="timeline-session-title" style="color: ${colorHex}; font-weight: 700;">${session.subject}</div>
-                <div class="timeline-session-lesson" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 2px 0;" title="${session.lesson || ''}">${session.lesson || ''}</div>
-                <div class="timeline-session-time">${session.startTime} - ${session.endTime}</div>
-            `;
-
-            container.appendChild(sessionDiv);
+    let day, date;
+    if (AppState.timetablePeriod === 'week') {
+        const dayVal = document.getElementById('create-schedule-day').value;
+        if (!dayVal) {
+            showCreateTimetableError("Please select a day of the week.");
+            return;
         }
-    });
+        day = parseInt(dayVal);
+        date = getDateOfCurrentWeek(day);
+    } else {
+        const dateVal = document.getElementById('create-schedule-date').value;
+        if (!dateVal) {
+            showCreateTimetableError("Please select a date.");
+            return;
+        }
+        date = dateVal;
+        day = getDayFromDate(date);
+    }
+
+    const id = document.getElementById('create-schedule-id').value;
+    const username = user.username;
+
+    if (id) {
+        // Edit Mode
+        const index = AppState.timetable.findIndex(s => s.id === id);
+        if (index !== -1) {
+            const oldSession = AppState.timetable[index];
+            AppState.timetable[index] = {
+                id,
+                username: oldSession.username || username,
+                day, date, subject, startTime, endTime, color, lesson, notes
+            };
+        }
+    } else {
+        // Add Mode
+        const newSession = {
+            id: 't_' + Date.now(),
+            username,
+            day, date, subject, startTime, endTime, color, lesson, notes
+        };
+        AppState.timetable.push(newSession);
+    }
+
+    // Save
+    saveToLocalStorage('timetable');
+    resetCreateTimetableForm();
+    fetchTimetableForTimeframe();
+    
+    // If on dashboard, update stats too
+    if (AppState.currentView === 'dashboard') {
+        renderDashboardView();
+    }
+}
+
+function editCreateTimetableSession(session) {
+    document.getElementById('create-schedule-id').value = session.id;
+    
+    if (AppState.timetablePeriod === 'week') {
+        document.getElementById('create-schedule-day').value = session.day;
+    } else {
+        document.getElementById('create-schedule-date').value = session.date || '';
+    }
+
+    const user = AppState.currentUser;
+    const isSenior = (user && (user.classGrade === '11th' || user.classGrade === '12th' || user.classGrade === 'Admin'));
+    if (isSenior) {
+        document.getElementById('create-subject-select').value = session.subject;
+        document.getElementById('create-subject-input').value = '';
+    } else {
+        document.getElementById('create-subject-input').value = session.subject;
+        document.getElementById('create-subject-select').value = '';
+    }
+
+    document.getElementById('create-schedule-start-time').value = session.startTime;
+    document.getElementById('create-schedule-end-time').value = session.endTime;
+    document.getElementById('create-schedule-lesson').value = session.lesson || '';
+    document.getElementById('create-schedule-notes').value = session.notes || '';
+
+    // Check correct radio button
+    const radio = document.querySelector(`input[name="create-schedule-color"][value="${session.color}"]`);
+    if (radio) radio.checked = true;
+
+    // Change button text to indicate edit mode
+    document.getElementById('btn-save-create-slot').innerHTML = '<i class="fa-solid fa-circle-check"></i> Update Slot';
+    
+    // Show delete button
+    const deleteBtn = document.getElementById('btn-delete-create-slot');
+    if (deleteBtn) deleteBtn.classList.remove('hide');
+    
+    // Scroll form into view for mobile devices
+    document.getElementById('timetable-form-card').scrollIntoView({ behavior: 'smooth' });
+}
+
+function deleteCreateTimetableSession(id) {
+    if (confirm("Are you sure you want to delete this study session from your timetable?")) {
+        AppState.timetable = AppState.timetable.filter(s => s.id !== id);
+        saveToLocalStorage('timetable');
+        fetchTimetableForTimeframe();
+        
+        // Reset form if we were editing the deleted session
+        if (document.getElementById('create-schedule-id').value === id) {
+            resetCreateTimetableForm();
+        }
+
+        if (AppState.currentView === 'dashboard') {
+            renderDashboardView();
+        }
+    }
 }
 
 // --- TIMETABLE CRUD OPERATIONS ---
@@ -2354,20 +2886,30 @@ function toggleUserStatus(username, newStatus) {
 
 function deleteUser(username) {
     if (confirm("Are you sure you want to permanently delete this user?")) {
+        // 1. Delete user
         AppState.users = AppState.users.filter(u => u.username !== username);
         saveToLocalStorage('users');
+
+        // 2. Cascade delete associated timetable entries
+        AppState.timetable = AppState.timetable.filter(t => t.username !== username);
+        saveToLocalStorage('timetable');
+
+        // 3. Cascade delete associated activity logs
+        AppState.logs = AppState.logs.filter(l => l.username !== username);
+        saveToLocalStorage('logs');
+
         renderAdminView();
     }
 }
 
 // --- REPORTS RENDERING & ANALYTICS ---
 
-function renderReportsView() {
+async function renderReportsView() {
     const reportStart = document.getElementById('report-start-date');
     const reportEnd = document.getElementById('report-end-date');
     const reportSubject = document.getElementById('report-subject-select');
     
-    if (!reportStart || !reportEnd || !reportSubject) return;
+    if (!reportStart || !reportEnd || !reportSubject || !AppState.currentUser) return;
     
     if (!reportStart.value) reportStart.value = getOffsetDateString(30);
     if (!reportEnd.value) reportEnd.value = getOffsetDateString(0);
@@ -2376,134 +2918,115 @@ function renderReportsView() {
     const endDate = reportEnd.value;
     const selectedSubject = reportSubject.value;
     
-    // Filter logs
-    let filteredLogs = AppState.userLogs.filter(log => {
-        if (log.date < startDate || log.date > endDate) return false;
-        if (selectedSubject !== 'ALL') {
-            const isStandard = ['Physics', 'Chemistry', 'Mathematics', 'English'].includes(log.subject);
-            if (selectedSubject === 'OTHER') {
-                if (isStandard) return false;
-            } else {
-                if (log.subject !== selectedSubject) return false;
-            }
+    try {
+        const response = await fetch(`${API_BASE}/api/db?reports=true&username=${encodeURIComponent(AppState.currentUser.username)}&startDate=${startDate}&endDate=${endDate}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch reports: ${response.statusText}`);
         }
-        return true;
-    });
-    
-    // Filter sessions
-    let filteredSessions = AppState.userTimetable.filter(s => {
-        if (s.date) {
-            if (s.date < startDate || s.date > endDate) return false;
+        const data = await response.json();
+        
+        let actualBlocks = data.actualBlocks || [];
+        let targetBlocks = data.targetBlocks || [];
+        
+        // Compute total actual minutes
+        let totalActualMinutes = actualBlocks.reduce((sum, b) => sum + b.duration, 0);
+        const actualHours = (totalActualMinutes / 60).toFixed(1);
+        
+        // Compute total target minutes
+        let totalTargetMinutes = targetBlocks.reduce((sum, b) => sum + b.duration, 0);
+        const targetHours = (totalTargetMinutes / 60).toFixed(1);
+        
+        // Compliance
+        let compliance = 0;
+        if (totalTargetMinutes > 0) {
+            compliance = Math.min(100, Math.round((totalActualMinutes / totalTargetMinutes) * 100));
+        } else if (totalActualMinutes > 0) {
+            compliance = 100;
         }
-        if (selectedSubject !== 'ALL') {
-            const isStandard = ['Physics', 'Chemistry', 'Mathematics', 'English'].includes(s.subject);
-            if (selectedSubject === 'OTHER') {
-                if (isStandard) return false;
-            } else {
-                if (s.subject !== selectedSubject) return false;
-            }
-        }
-        return true;
-    });
-    
-    // Calculate actual study hours
-    let totalActualMinutes = 0;
-    filteredLogs.forEach(log => totalActualMinutes += log.duration);
-    const actualHours = (totalActualMinutes / 60).toFixed(1);
-    
-    // Calculate target hours
-    let totalTargetMinutes = getTargetMinutesForDateRange(startDate, endDate, selectedSubject, AppState.userTimetable);
-    const targetHours = (totalTargetMinutes / 60).toFixed(1);
-    
-    // Compliance
-    let compliance = 0;
-    if (totalTargetMinutes > 0) {
-        compliance = Math.min(100, Math.round((totalActualMinutes / totalTargetMinutes) * 100));
-    } else if (totalActualMinutes > 0) {
-        compliance = 100;
-    }
-    
-    // Top Subject
-    const subjectMinutes = {};
-    filteredLogs.forEach(log => {
-        subjectMinutes[log.subject] = (subjectMinutes[log.subject] || 0) + log.duration;
-    });
-    let topSubject = 'None';
-    let topSubjectMins = 0;
-    for (const sub in subjectMinutes) {
-        if (subjectMinutes[sub] > topSubjectMins) {
-            topSubject = sub;
-            topSubjectMins = subjectMinutes[sub];
-        }
-    }
-    
-    // Update UI Metrics
-    document.getElementById('report-val-actual').textContent = `${actualHours}h`;
-    document.getElementById('report-val-actual-subtext').textContent = `${filteredLogs.length} logs found`;
-    document.getElementById('report-val-target').textContent = `${targetHours}h`;
-    document.getElementById('report-val-target-subtext').textContent = `${filteredSessions.length} sessions found`;
-    document.getElementById('report-val-compliance').textContent = `${compliance}%`;
-    document.getElementById('report-val-compliance-subtext').textContent = `${(totalActualMinutes/60).toFixed(1)} of ${(totalTargetMinutes/60).toFixed(1)} hrs`;
-    document.getElementById('report-val-top-subject').textContent = topSubject;
-    document.getElementById('report-val-top-subject-time').textContent = topSubject === 'None' ? '0 mins logged' : `${formatMinutes(topSubjectMins)} logged`;
-    
-    // Render logs list
-    const logsContainer = document.getElementById('report-logs-container');
-    logsContainer.innerHTML = '';
-    if (filteredLogs.length === 0) {
-        logsContainer.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No logs match the criteria.</p>`;
-    } else {
-        filteredLogs.sort((a,b) => b.date.localeCompare(a.date));
-        filteredLogs.forEach(log => {
-            const card = document.createElement('div');
-            card.className = 'log-item-card';
-            card.style.borderLeft = `4px solid ${getSubjectColorHex(log.subject)}`;
-            card.innerHTML = `
-                <div class="log-item-info" style="width: 100%;">
-                    <div class="log-subject-line">
-                        <span class="log-item-subject" style="color: ${getSubjectColorHex(log.subject)}; font-weight: 700;">${log.subject}</span>
-                        <span class="log-item-duration">${formatMinutes(log.duration)}</span>
-                    </div>
-                    <div style="font-size:0.8rem; color:var(--text-secondary);">${log.date}</div>
-                    <div class="log-item-topic" style="margin-top: 4px;">${log.topic}</div>
-                </div>
-            `;
-            logsContainer.appendChild(card);
+        
+        // Top Subject
+        const subjectMinutes = {};
+        actualBlocks.forEach(b => {
+            subjectMinutes[b.subject] = (subjectMinutes[b.subject] || 0) + b.duration;
         });
-    }
-    
-    // Render sessions list
-    const sessionsContainer = document.getElementById('report-timetable-container');
-    sessionsContainer.innerHTML = '';
-    if (filteredSessions.length === 0) {
-        sessionsContainer.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No sessions match the criteria.</p>`;
-    } else {
-        filteredSessions.forEach(session => {
-            const todayStr = new Date().toISOString().split('T')[0];
-            const isMissed = session.date && (session.date < todayStr) && !AppState.userLogs.some(log => log.date === session.date && log.subject === session.subject);
+        let topSubject = 'None';
+        let topSubjectMins = 0;
+        for (const sub in subjectMinutes) {
+            if (subjectMinutes[sub] > topSubjectMins) {
+                topSubject = sub;
+                topSubjectMins = subjectMinutes[sub];
+            }
+        }
+        
+        // Update UI Metrics
+        document.getElementById('report-val-actual').textContent = `${actualHours}h`;
+        document.getElementById('report-val-actual-subtext').textContent = `${actualBlocks.length} actual slots`;
+        document.getElementById('report-val-target').textContent = `${targetHours}h`;
+        document.getElementById('report-val-target-subtext').textContent = `${targetBlocks.length} target slots`;
+        document.getElementById('report-val-compliance').textContent = `${compliance}%`;
+        document.getElementById('report-val-compliance-subtext').textContent = `${(totalActualMinutes/60).toFixed(1)} of ${(totalTargetMinutes/60).toFixed(1)} hrs`;
+        document.getElementById('report-val-top-subject').textContent = topSubject;
+        document.getElementById('report-val-top-subject-time').textContent = topSubject === 'None' ? '0 mins logged' : `${formatMinutes(topSubjectMins)} logged`;
+        
+        // Now filter based on selected subject for grid rendering
+        if (selectedSubject !== 'ALL') {
+            const isStandard = (sub) => ['Physics', 'Chemistry', 'Mathematics', 'English'].includes(sub);
+            if (selectedSubject === 'OTHER') {
+                actualBlocks = actualBlocks.filter(b => !isStandard(b.subject));
+                targetBlocks = targetBlocks.filter(b => !isStandard(b.subject));
+            } else {
+                actualBlocks = actualBlocks.filter(b => b.subject === selectedSubject);
+                targetBlocks = targetBlocks.filter(b => b.subject === selectedSubject);
+            }
+        }
+        
+        // Render Periodic Table Grid
+        const gridContainer = document.getElementById('reports-periodic-grid-container');
+        if (gridContainer) {
+            gridContainer.innerHTML = '';
             
-            const card = document.createElement('div');
-            card.className = 'log-item-card';
-            card.style.borderLeft = `4px solid ${getSubjectColorHex(session.subject)}`;
-            if (isMissed) {
-                card.style.background = 'rgba(239, 68, 68, 0.02)';
+            const activeType = AppState.reportGridType || 'actual';
+            const blocksToRender = activeType === 'actual' ? actualBlocks : targetBlocks;
+            
+            if (blocksToRender.length === 0) {
+                gridContainer.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px 0;">No study blocks match the selected timeframe/criteria.</p>`;
+            } else {
+                // Sort by date (descending)
+                blocksToRender.sort((a, b) => b.date.localeCompare(a.date));
+                blocksToRender.forEach((block, idx) => {
+                    const cell = renderReportPeriodicCell(block, idx, activeType);
+                    gridContainer.appendChild(cell);
+                });
             }
-            card.innerHTML = `
-                <div class="log-item-info" style="width: 100%;">
-                    <div class="log-subject-line" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                        <span class="log-item-subject" style="color: ${getSubjectColorHex(session.subject)}; font-weight: 700;">${session.subject}</span>
-                        <span style="display: flex; align-items: center; gap: 8px;">
-                            ${isMissed ? `<span style="color: #ef4444; font-size: 0.75rem; font-weight: 800; background: rgba(239, 68, 68, 0.1); padding: 2px 6px; border-radius: 4px;"><i class="fa-solid fa-flag"></i> Missed</span>` : ''}
-                            <span class="log-item-duration" style="font-size: 0.8rem; color: var(--text-secondary);">${session.startTime} - ${session.endTime}</span>
-                        </span>
-                    </div>
-                    <div style="font-size:0.8rem; color:var(--text-secondary);">${getDayName(session.day)} ${session.date || ''}</div>
-                    <div class="log-item-topic" style="margin-top: 4px;">${session.lesson || 'General Study'}</div>
-                </div>
-            `;
-            sessionsContainer.appendChild(card);
-        });
+        }
+    } catch (error) {
+        console.error("Error rendering reports view:", error);
     }
+}
+
+function renderReportPeriodicCell(block, index, type) {
+    const cell = document.createElement('div');
+    cell.className = 'periodic-cell';
+    const colorHex = getSubjectColorHex(block.subject);
+    
+    cell.style.background = `color-mix(in srgb, ${colorHex} 12%, var(--card-bg-fallback, rgba(20, 20, 20, 0.4)))`;
+    cell.style.border = `1.5px solid ${colorHex}`;
+    
+    const symbol = block.subject ? block.subject.substring(0, 2).toUpperCase() : '??';
+    const durationText = `${formatMinutes(block.duration)}`;
+    const dateFormatted = block.date ? block.date.split('-').slice(1).join('/') : ''; 
+    
+    cell.innerHTML = `
+        <div class="periodic-number">${index + 1}</div>
+        <div class="periodic-time" style="color: ${colorHex}; font-weight: 700;">${dateFormatted}</div>
+        <div class="periodic-symbol" style="color: ${colorHex}; font-size: 1.25rem; font-weight: 800; margin-top: 18px;">${symbol}</div>
+        <div class="periodic-name" style="margin-top: 4px; font-weight: 600; font-size: 0.75rem;" title="${block.subject}">${block.subject}</div>
+        <div style="font-size: 0.65rem; color: var(--text-secondary); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-top: 2px;" title="${block.details || ''}">
+            ${block.details || ''}
+        </div>
+    `;
+    
+    return cell;
 }
 
 function getTargetMinutesForDateRange(startDateStr, endDateStr, subjectFilter, userTimetableList) {
@@ -3394,4 +3917,153 @@ function exportToPDF(isAdmin = false) {
     }
     
     doc.save(`${filenamePrefix}_Report_${startDate}_to_${endDate}.pdf`);
+}
+
+function renderDashboardTimetable() {
+    const container = document.getElementById('dashboard-periodic-grid-container');
+    const badge = document.getElementById('dashboard-timetable-badge');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const periodStr = AppState.timetablePeriod === 'week' ? 'Weekly' : 'Monthly';
+    if (badge) {
+        badge.textContent = periodStr;
+    }
+
+    if (AppState.timetablePeriod === 'week') {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'periodic-table-weekly';
+        
+        const days = [
+            { name: 'Monday', index: 1 },
+            { name: 'Tuesday', index: 2 },
+            { name: 'Wednesday', index: 3 },
+            { name: 'Thursday', index: 4 },
+            { name: 'Friday', index: 5 },
+            { name: 'Saturday', index: 6 },
+            { name: 'Sunday', index: 0 }
+        ];
+
+        days.forEach(dayObj => {
+            const col = document.createElement('div');
+            col.style.display = 'flex';
+            col.style.flexDirection = 'column';
+            
+            const header = document.createElement('div');
+            header.className = 'periodic-table-column-header';
+            header.textContent = dayObj.name.substring(0, 3);
+            col.appendChild(header);
+            
+            const cellsWrapper = document.createElement('div');
+            cellsWrapper.className = 'periodic-table-column-cells';
+            
+            const daySessions = AppState.userTimetable.filter(s => s.day == dayObj.index);
+            
+            if (daySessions.length === 0) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'periodic-cell periodic-cell-empty periodic-cell-compact';
+                emptyCell.innerHTML = `
+                    <div class="periodic-symbol" style="font-size: 0.9rem; opacity: 0.2;"><i class="fa-solid fa-bed"></i></div>
+                    <div class="periodic-name" style="opacity: 0.4; font-size: 0.6rem;">Free</div>
+                `;
+                cellsWrapper.appendChild(emptyCell);
+            } else {
+                daySessions.sort((a, b) => a.startTime.localeCompare(b.startTime));
+                daySessions.forEach((session, idx) => {
+                    const cell = renderPeriodicCell(session, idx);
+                    cell.classList.add('periodic-cell-compact');
+                    // Add redirection on click
+                    cell.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        switchView('timetable');
+                        editCreateTimetableSession(session);
+                    });
+                    cellsWrapper.appendChild(cell);
+                });
+            }
+            
+            col.appendChild(cellsWrapper);
+            wrapper.appendChild(col);
+        });
+
+        container.appendChild(wrapper);
+    } else {
+        // Render monthly calendar (simplified compact view)
+        const wrapper = document.createElement('div');
+        wrapper.className = 'periodic-table-monthly';
+        
+        const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        weekDays.forEach(wd => {
+            const header = document.createElement('div');
+            header.className = 'periodic-month-header';
+            header.textContent = wd;
+            wrapper.appendChild(header);
+        });
+
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = d.getMonth();
+        
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const offset = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+        const totalDays = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < offset; i++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.className = 'month-day-cell';
+            emptyCell.style.opacity = '0.35';
+            emptyCell.style.borderStyle = 'dashed';
+            wrapper.appendChild(emptyCell);
+        }
+
+        const todayStr = d.toISOString().split('T')[0];
+        
+        for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+            
+            const cell = document.createElement('div');
+            cell.className = 'month-day-cell';
+            if (dateStr === todayStr) {
+                cell.classList.add('today');
+            }
+            
+            const dayNumberLabel = document.createElement('div');
+            dayNumberLabel.className = 'day-number';
+            dayNumberLabel.textContent = dayNum;
+            cell.appendChild(dayNumberLabel);
+            
+            const daySessions = AppState.userTimetable.filter(s => s.date === dateStr);
+            
+            daySessions.forEach(session => {
+                const pill = document.createElement('div');
+                const colorHex = getSubjectColorHex(session.subject);
+                pill.className = 'month-session-pill';
+                pill.style.background = `color-mix(in srgb, ${colorHex} 15%, transparent)`;
+                pill.style.border = `1px solid ${colorHex}`;
+                pill.style.color = colorHex;
+                
+                const symbol = session.subject ? session.subject.substring(0, 2).toUpperCase() : '??';
+                pill.textContent = `${symbol}`;
+                pill.title = `${session.subject}: ${session.lesson || 'Study'}\nTime: ${session.startTime} - ${session.endTime}`;
+                
+                pill.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    switchView('timetable');
+                    editCreateTimetableSession(session);
+                });
+                
+                cell.appendChild(pill);
+            });
+
+            cell.addEventListener('click', () => {
+                switchView('timetable');
+                resetCreateTimetableForm();
+                document.getElementById('create-schedule-date').value = dateStr;
+            });
+            
+            wrapper.appendChild(cell);
+        }
+
+        container.appendChild(wrapper);
+    }
 }

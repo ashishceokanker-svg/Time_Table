@@ -2159,4 +2159,10 @@ html[data-theme="light"] .db-loading-overlay {
     }
 }
 
-
+/* Reports Periodic Grid */
+.periodic-reports-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+}
