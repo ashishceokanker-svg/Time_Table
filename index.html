@@ -292,7 +292,7 @@
                 <div class="timetable-filter-bar" style="display: flex; gap: 16px; align-items: center; margin-bottom: 24px; flex-wrap: wrap; background: rgba(120, 120, 120, 0.03); padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-color);">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <label for="timetable-filter-year" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Year:</label>
-                        <select id="timetable-filter-year" style="padding: 6px 12px; border-radius: 8px; background: var(--card-bg-fallback, rgba(30,30,30,0.6)); border: 1px solid var(--border-color); color: var(--text-primary); outline: none; font-size: 0.85rem;">
+                        <select id="timetable-filter-year" class="filter-select">
                             <option value="2025">2025</option>
                             <option value="2026" selected>2026</option>
                             <option value="2027">2027</option>
@@ -301,7 +301,7 @@
                     
                     <div id="timetable-month-filter-group" style="display: none; align-items: center; gap: 8px;">
                         <label for="timetable-filter-month" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Month:</label>
-                        <select id="timetable-filter-month" style="padding: 6px 12px; border-radius: 8px; background: var(--card-bg-fallback, rgba(30,30,30,0.6)); border: 1px solid var(--border-color); color: var(--text-primary); outline: none; font-size: 0.85rem;">
+                        <select id="timetable-filter-month" class="filter-select">
                             <option value="1">January</option>
                             <option value="2">February</option>
                             <option value="3">March</option>
@@ -319,7 +319,7 @@
 
                     <div id="timetable-week-filter-group" style="display: flex; align-items: center; gap: 8px;">
                         <label for="timetable-filter-week" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Week:</label>
-                        <select id="timetable-filter-week" style="padding: 6px 12px; border-radius: 8px; background: var(--card-bg-fallback, rgba(30,30,30,0.6)); border: 1px solid var(--border-color); color: var(--text-primary); outline: none; font-size: 0.85rem; max-width: 250px;">
+                        <select id="timetable-filter-week" class="filter-select" style="max-width: 250px;">
                             <!-- Dynamically populated -->
                         </select>
                     </div>
