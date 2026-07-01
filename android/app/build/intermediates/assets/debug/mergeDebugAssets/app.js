@@ -890,44 +890,16 @@ function updateSubjectInputsForClass() {
     const user = AppState.currentUser;
     if (!user) return;
     
-    const isSenior = (user.classGrade === '11th' || user.classGrade === '12th' || user.classGrade === 'Admin');
-    
-    const schedSelect = document.getElementById('schedule-subject-select');
     const schedInput = document.getElementById('schedule-subject-input');
-    
-    if (schedSelect && schedInput) {
-        if (isSenior) {
-            schedSelect.classList.remove('hide');
-            schedSelect.required = true;
-            schedInput.classList.add('hide');
-            schedInput.required = false;
-            schedInput.value = '';
-        } else {
-            schedInput.classList.remove('hide');
-            schedInput.required = true;
-            schedSelect.classList.add('hide');
-            schedSelect.required = false;
-            schedSelect.value = '';
-        }
+    if (schedInput) {
+        schedInput.classList.remove('hide');
+        schedInput.required = true;
     }
 
-    const createSelect = document.getElementById('create-subject-select');
     const createInput = document.getElementById('create-subject-input');
-    
-    if (createSelect && createInput) {
-        if (isSenior) {
-            createSelect.classList.remove('hide');
-            createSelect.required = true;
-            createInput.classList.add('hide');
-            createInput.required = false;
-            createInput.value = '';
-        } else {
-            createInput.classList.remove('hide');
-            createInput.required = true;
-            createSelect.classList.add('hide');
-            createSelect.required = false;
-            createSelect.value = '';
-        }
+    if (createInput) {
+        createInput.classList.remove('hide');
+        createInput.required = true;
     }
 }
 
@@ -2288,8 +2260,6 @@ function resetCreateTimetableForm() {
     document.getElementById('create-schedule-id').value = '';
     document.getElementById('create-schedule-day').value = '';
     document.getElementById('create-schedule-date').value = '';
-    
-    document.getElementById('create-subject-select').value = '';
     document.getElementById('create-subject-input').value = '';
     document.getElementById('create-schedule-lesson').value = '';
     document.getElementById('create-schedule-notes').value = '';
@@ -2327,10 +2297,7 @@ async function handleCreateFormSubmit(e) {
         return;
     }
 
-    const isSenior = (user.classGrade === '11th' || user.classGrade === '12th' || user.classGrade === 'Admin');
-    const subject = isSenior 
-        ? document.getElementById('create-subject-select').value 
-        : document.getElementById('create-subject-input').value.trim();
+    const subject = document.getElementById('create-subject-input').value.trim();
 
     if (!subject) {
         showCreateTimetableError("Please enter or select a subject.");
@@ -2411,15 +2378,7 @@ function editCreateTimetableSession(session) {
         document.getElementById('create-schedule-date').value = session.date || '';
     }
 
-    const user = AppState.currentUser;
-    const isSenior = (user && (user.classGrade === '11th' || user.classGrade === '12th' || user.classGrade === 'Admin'));
-    if (isSenior) {
-        document.getElementById('create-subject-select').value = session.subject;
-        document.getElementById('create-subject-input').value = '';
-    } else {
-        document.getElementById('create-subject-input').value = session.subject;
-        document.getElementById('create-subject-select').value = '';
-    }
+    document.getElementById('create-subject-input').value = session.subject;
 
     document.getElementById('create-schedule-start-time').value = session.startTime;
     document.getElementById('create-schedule-end-time').value = session.endTime;
@@ -2478,13 +2437,7 @@ function openScheduleModal(id = null) {
             document.getElementById('schedule-date').value = session.date || '';
             document.getElementById('schedule-date').min = new Date().toISOString().split('T')[0];
             
-            if (isSenior) {
-                document.getElementById('schedule-subject-select').value = session.subject;
-                document.getElementById('schedule-subject-input').value = '';
-            } else {
-                document.getElementById('schedule-subject-input').value = session.subject;
-                document.getElementById('schedule-subject-select').value = '';
-            }
+            document.getElementById('schedule-subject-input').value = session.subject;
 
             document.getElementById('schedule-start-time').value = session.startTime;
             document.getElementById('schedule-end-time').value = session.endTime;
@@ -2512,7 +2465,6 @@ function openScheduleModal(id = null) {
         document.getElementById('schedule-lesson').value = "";
         document.getElementById('schedule-notes').value = "";
         
-        document.getElementById('schedule-subject-select').value = "";
         document.getElementById('schedule-subject-input').value = "";
     }
 
@@ -2530,11 +2482,7 @@ function handleScheduleFormSubmit(e) {
 
     const date = document.getElementById('schedule-date').value;
     
-    const user = AppState.currentUser;
-    const isSenior = (user && (user.classGrade === '11th' || user.classGrade === '12th' || user.classGrade === 'Admin'));
-    const subject = isSenior 
-        ? document.getElementById('schedule-subject-select').value 
-        : document.getElementById('schedule-subject-input').value.trim();
+    const subject = document.getElementById('schedule-subject-input').value.trim();
 
     if (!subject) {
         alert("Please enter or select a subject.");
