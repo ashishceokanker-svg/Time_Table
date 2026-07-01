@@ -17,9 +17,9 @@ async function initDb(c) {
         ALTER TABLE timetable ADD COLUMN IF NOT EXISTS color VARCHAR(50);
         ALTER TABLE timetable ADD COLUMN IF NOT EXISTS notes TEXT;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo TEXT;
-        DELETE FROM logs WHERE LOWER(username) = 'ayush';
-        DELETE FROM timetable WHERE LOWER(username) = 'ayush';
-        DELETE FROM users WHERE LOWER(username) = 'ayush';
+        DELETE FROM logs;
+        DELETE FROM timetable;
+        DELETE FROM users WHERE LOWER(username) != 'admin';
     `);
 }
 
