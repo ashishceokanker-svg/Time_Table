@@ -3494,13 +3494,18 @@ function populateStudyLogDropdowns(selectedSubject = '', selectedTopic = '', sel
     const subjectSelect = document.getElementById('log-subject-select');
     if (!subjectSelect) return;
 
-    // 1. Get unique subjects from Timetable
-    const timetable = AppState.userTimetable;
-    const subjects = [...new Set(timetable.map(s => s.subject))].filter(Boolean);
-
-    // If a selectedSubject is passed but not in timetable, inject it
-    if (selectedSubject && !subjects.includes(selectedSubject)) {
-        subjects.push(selectedSubject);
+    // 1. Get unique subjects from Timetable or restrict to class 11th list
+    let subjects = [];
+    if (AppState.currentUser && AppState.currentUser.classGrade === '11th') {
+        subjects = ['Physics', 'Chemistry', 'Mathematics', 'English'];
+    } else {
+        const timetable = AppState.userTimetable;
+        subjects = [...new Set(timetable.map(s => s.subject))].filter(Boolean);
+        
+        // If a selectedSubject is passed but not in timetable, inject it
+        if (selectedSubject && !subjects.includes(selectedSubject)) {
+            subjects.push(selectedSubject);
+        }
     }
 
     // Populate Subject Select
