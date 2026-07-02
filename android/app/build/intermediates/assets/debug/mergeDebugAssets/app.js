@@ -602,6 +602,7 @@ function setupEventListeners() {
     initTimeframeFilters();
     initReportsTimeframeFilters();
     initDashboardChatbot();
+    setupZoomModalClose();
 }
 
 function setupAuthEvents() {
@@ -4098,6 +4099,15 @@ function initDashboardChatbot() {
 
     if (!chatForm || !chatInput || !chatMessages) return;
 
+    // Initialize Mermaid diagram renderer config
+    if (window.mermaid) {
+        window.mermaid.initialize({
+            startOnLoad: false,
+            theme: document.documentElement.getAttribute('data-theme') === 'light' ? 'default' : 'dark',
+            securityLevel: 'loose'
+        });
+    }
+
     // Chatbot state
     let attachedImageBase64 = null;
     if (!AppState.chatHistory) AppState.chatHistory = [];
@@ -4246,8 +4256,105 @@ function initDashboardChatbot() {
 
         // Message text container
         const textSpan = document.createElement('span');
-        textSpan.textContent = text;
         msgDiv.appendChild(textSpan);
+
+        // Parse Mermaid diagrams in message
+        if (isBot && !isLoading && text.includes('```mermaid')) {
+            const parts = text.split('```mermaid');
+            
+            // Render text part before diagram
+            textSpan.textContent = parts[0];
+
+            // Render diagrams
+            for (let i = 1; i < parts.length; i++) {
+                const subParts = parts[i].split('```');
+                const mermaidCode = subParts[0].trim();
+                const textAfterDiagram = subParts[1] ? subParts[1].trim() : '';
+
+                // Create diagram block container
+                const diagramWrapper = document.createElement('div');
+                diagramWrapper.style.margin = '12px 0';
+                diagramWrapper.style.display = 'flex';
+                diagramWrapper.style.flexDirection = 'column';
+                diagramWrapper.style.gap = '6px';
+                diagramWrapper.style.background = 'rgba(0,0,0,0.2)';
+                diagramWrapper.style.borderRadius = '12px';
+                diagramWrapper.style.padding = '12px';
+                diagramWrapper.style.border = '1px solid var(--border-color)';
+                diagramWrapper.style.overflow = 'hidden';
+
+                const diagramDiv = document.createElement('div');
+                const diagramId = 'mermaid-' + Date.now() + Math.floor(Math.random() * 100000);
+                diagramDiv.id = diagramId;
+                diagramDiv.className = 'mermaid-chart';
+                diagramDiv.style.cursor = 'pointer';
+                diagramDiv.style.textAlign = 'center';
+                diagramWrapper.appendChild(diagramDiv);
+
+                // Download Button container
+                const btnContainer = document.createElement('div');
+                btnContainer.style.display = 'flex';
+                btnContainer.style.justifyContent = 'flex-end';
+                btnContainer.style.gap = '8px';
+
+                const btnDownload = document.createElement('button');
+                btnDownload.className = 'btn btn-secondary';
+                btnDownload.style.padding = '4px 8px';
+                btnDownload.style.minHeight = '0';
+                btnDownload.style.fontSize = '0.75rem';
+                btnDownload.style.borderRadius = '6px';
+                btnDownload.style.cursor = 'pointer';
+                btnDownload.innerHTML = '<i class="fa-solid fa-download"></i> Save as PNG';
+                btnContainer.appendChild(btnDownload);
+                diagramWrapper.appendChild(btnContainer);
+
+                msgDiv.appendChild(diagramWrapper);
+
+                // Render text after diagram
+                if (textAfterDiagram) {
+                    const postSpan = document.createElement('span');
+                    postSpan.textContent = textAfterDiagram;
+                    msgDiv.appendChild(postSpan);
+                }
+
+                // Render Mermaid async
+                setTimeout(() => {
+                    if (window.mermaid) {
+                        try {
+                            window.mermaid.render(diagramId + '-svg', mermaidCode).then(({ svg }) => {
+                                diagramDiv.innerHTML = svg;
+                                
+                                const renderedSvg = diagramDiv.querySelector('svg');
+                                if (renderedSvg) {
+                                    renderedSvg.style.maxWidth = '100%';
+                                    renderedSvg.style.height = 'auto';
+
+                                    // Add Click listener to Zoom fullscreen modal
+                                    diagramDiv.addEventListener('click', (e) => {
+                                        if (e.target.closest('button')) return; // ignore download button clicks
+                                        openDiagramZoomModal(renderedSvg);
+                                    });
+
+                                    // Save as PNG click handler
+                                    btnDownload.addEventListener('click', () => {
+                                        downloadSvgAsPng(renderedSvg, `CBSE_NCERT_Diagram_${Date.now()}.png`);
+                                    });
+                                }
+                            }).catch(err => {
+                                console.error("Mermaid Render Error: ", err);
+                                diagramDiv.innerHTML = `<pre style="color:#ef4444; font-size:0.75rem;">Error rendering diagram:\n${err.message || err}</pre>`;
+                            });
+                        } catch (err) {
+                            diagramDiv.innerHTML = `<pre style="color:#ef4444; font-size:0.75rem;">Error rendering diagram:\n${err.message || err}</pre>`;
+                        }
+                    } else {
+                        diagramDiv.innerHTML = `<pre style="color:var(--text-secondary); font-size:0.75rem;">Mermaid.js engine loading...</pre>`;
+                    }
+                }, 50);
+            }
+        } else {
+            textSpan.textContent = text;
+        }
 
         // TTS Read Aloud Speaker integration
         if (isBot && !isLoading) {
@@ -4383,4 +4490,112 @@ function renderSuggestedFocusAreas() {
     } else {
         textContainer.textContent = "Start chatting with the AI Study Assistant to receive personalized study recommendations based on your query activity.";
     }
+}
+
+let currentZoomScale = 1.0;
+function openDiagramZoomModal(svgElement) {
+    const modal = document.getElementById('diagram-zoom-modal');
+    const container = document.getElementById('zoom-diagram-container');
+    const pctSpan = document.getElementById('zoom-percentage');
+
+    if (!modal || !container || !pctSpan) return;
+
+    // Reset zoom state
+    currentZoomScale = 1.0;
+    pctSpan.textContent = "100%";
+
+    // Clone SVG to avoid modifying original layout
+    const clone = svgElement.cloneNode(true);
+    clone.style.width = '100%';
+    clone.style.height = 'auto';
+    clone.style.maxWidth = '100%';
+    clone.style.maxHeight = '100%';
+    clone.style.transform = `scale(${currentZoomScale})`;
+    clone.style.transformOrigin = 'center center';
+    clone.style.transition = 'transform 0.2s';
+
+    container.innerHTML = '';
+    container.appendChild(clone);
+
+    // Show modal
+    modal.classList.remove('hide');
+    modal.style.display = 'flex';
+
+    // Zoom listeners
+    const btnIn = document.getElementById('btn-zoom-in');
+    const btnOut = document.getElementById('btn-zoom-out');
+    const btnReset = document.getElementById('btn-zoom-reset');
+
+    const updateScale = () => {
+        clone.style.transform = `scale(${currentZoomScale})`;
+        pctSpan.textContent = `${Math.round(currentZoomScale * 100)}%`;
+    };
+
+    btnIn.onclick = () => {
+        currentZoomScale = Math.min(3.0, currentZoomScale + 0.1);
+        updateScale();
+    };
+
+    btnOut.onclick = () => {
+        currentZoomScale = Math.max(0.5, currentZoomScale - 0.1);
+        updateScale();
+    };
+
+    btnReset.onclick = () => {
+        currentZoomScale = 1.0;
+        updateScale();
+    };
+}
+
+function setupZoomModalClose() {
+    const modal = document.getElementById('diagram-zoom-modal');
+    const btnClose = document.getElementById('btn-close-zoom-modal');
+    if (modal && btnClose) {
+        btnClose.addEventListener('click', () => {
+            modal.classList.add('hide');
+            modal.style.display = 'none';
+        });
+        modal.addEventListener('click', (e) => {
+            if (e.target.id === 'diagram-zoom-modal') {
+                modal.classList.add('hide');
+                modal.style.display = 'none';
+            }
+        });
+    }
+}
+
+function downloadSvgAsPng(svgElement, filename) {
+    const clone = svgElement.cloneNode(true);
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+    const svgString = new XMLSerializer().serializeToString(clone);
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const URL = window.URL || window.webkitURL || window;
+    const blobURL = URL.createObjectURL(svgBlob);
+    
+    const image = new Image();
+    image.onload = () => {
+        const canvas = document.createElement('canvas');
+        const bbox = svgElement.getBoundingClientRect();
+        
+        canvas.width = (bbox.width || 600) * 2;
+        canvas.height = (bbox.height || 400) * 2;
+        
+        const context = canvas.getContext('2d');
+        context.fillStyle = '#1e1e2e'; // Matches Dark theme base
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        
+        const png = canvas.toDataURL('image/png');
+        const downloadLink = document.createElement('a');
+        downloadLink.href = png;
+        downloadLink.download = filename;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        
+        URL.revokeObjectURL(blobURL);
+    };
+    image.src = blobURL;
 }

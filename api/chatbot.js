@@ -139,6 +139,80 @@ module.exports = async (req, res) => {
             }
         }
 
+        // Diagram Triggers
+        const isDiagramRequested = prompt.includes('diagram') || prompt.includes('flowchart') || prompt.includes('mermaid') || prompt.includes('timeline') || prompt.includes('hierarchy');
+        
+        if (isDiagramRequested || prompt.includes('food chain') || prompt.includes('water cycle') || prompt.includes('digestive system') || prompt.includes('plant kingdom')) {
+            let diagramReply = "";
+            if (prompt.includes('food chain')) {
+                diagramReply = `Here is a flowchart of the Food Chain representing trophic levels in an ecosystem:
+
+\`\`\`mermaid
+graph LR
+    Sun[Sun / सूर्य: Energy Source] --> Producer[Producers / उत्पादक: Green Plants]
+    Producer --> Herbivore[Herbivores / शाकाहारी: Rabbit]
+    Herbivore --> Carnivore[Carnivores / मांसाहारी: Snake]
+    Carnivore --> Apex[Apex Predator / शीर्ष उपभोक्ता: Eagle]
+    Apex --> Decomposer[Decomposers / अपघटक: Fungi/Bacteria]
+    
+    style Sun fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
+    style Producer fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+    style Herbivore fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
+    style Carnivore fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
+    style Apex fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+    style Decomposer fill:#6b7280,stroke:#4b5563,stroke-width:2px,color:#fff
+\`\`\`
+
+Explanation: Energy flows unidirectional from the Sun to Autotrophic Producers, which fix solar energy through photosynthesis, and then sequentially to primary, secondary, and tertiary consumers.`;
+                return res.status(200).json({ reply: diagramReply });
+            } else if (prompt.includes('water cycle')) {
+                diagramReply = `Here is a flowchart of the Water Cycle (जल चक्र):
+
+\`\`\`mermaid
+graph TD
+    Ocean[Ocean Water / महासागर] -- Evaporation / वाष्पीकरण --> Vapor[Water Vapor / जल वाष्प]
+    Vapor -- Condensation / संघनन --> Cloud[Clouds / बादल]
+    Cloud -- Precipitation / वर्षण --> Rain[Rain/Snow / वर्षा]
+    Rain -- Runoff & Infiltration --> Ocean
+\`\`\`
+
+Explanation: The water cycle is a continuous natural process where water evaporates, condenses into clouds, and precipitates back to earth as rain or snow.`;
+                return res.status(200).json({ reply: diagramReply });
+            } else if (prompt.includes('digestive')) {
+                diagramReply = `Here is a flowchart of the Human Digestive System:
+
+\`\`\`mermaid
+graph TD
+    Mouth[Mouth / मुख] --> Esophagus[Esophagus / ग्रासनली]
+    Esophagus --> Stomach[Stomach / आमाशय]
+    Stomach --> SmallIntestine[Small Intestine / क्षुद्रांत्र]
+    SmallIntestine --> LargeIntestine[Large Intestine / वृहदांत्र]
+    LargeIntestine --> Anus[Anus / गुदा]
+\`\`\`
+
+Explanation: Digestion begins in the mouth, travels down the esophagus to the stomach for chemical breakdown, enters the small intestine for nutrient absorption, and larger intestine for water absorption before excretion.`;
+                return res.status(200).json({ reply: diagramReply });
+            } else if (prompt.includes('plant kingdom')) {
+                diagramReply = `Here is the hierarchical classification of the Plant Kingdom:
+
+\`\`\`mermaid
+graph TD
+    Plant[Plant Kingdom / पादप जगत] --> Cryptogamae[Cryptogamae / अपुष्पोद्भिद]
+    Plant --> Phanerogamae[Phanerogamae / पुष्पोद्भिद]
+    
+    Cryptogamae --> Thallophyta[Thallophyta / थैलोफाइटा]
+    Cryptogamae --> Bryophyta[Bryophyta / ब्रायोफाइटा]
+    Cryptogamae --> Pteridophyta[Pteridophyta / टेरिडोफाइटा]
+    
+    Phanerogamae --> Gymnosperms[Gymnosperms / जिम्नोस्पर्म]
+    Phanerogamae --> Angiosperms[Angiosperms / एन्जियोस्पर्म]
+\`\`\`
+
+Explanation: The Plant Kingdom is broadly classified based on seed production into spore-bearing Cryptogamae and seed-bearing Phanerogamae.`;
+                return res.status(200).json({ reply: diagramReply });
+            }
+        }
+
         // 6. Primary CBSE NCERT Response Logic
         const isHindiQuery = prompt.includes('kya') || prompt.includes('kaise') || prompt.includes('samjhao') || prompt.includes('batao') || prompt.includes('kya hota') || prompt.includes('kise kehte') || prompt.includes('kijiye');
         let reply = "";
