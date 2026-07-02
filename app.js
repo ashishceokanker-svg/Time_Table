@@ -1566,7 +1566,8 @@ function renderDashboardView() {
     // Render Subject-wise SVG Donut/Pie Chart
     renderSubjectPieChart(subjectMinutes);
 
-
+    // Render Suggested Focus Areas based on chatbot analytics
+    renderSuggestedFocusAreas();
 }
 
 function renderMissedSchedulesDashboard() {
@@ -4088,19 +4089,109 @@ function initDashboardChatbot() {
     const chatInput = document.getElementById('dashboard-chat-input');
     const chatMessages = document.getElementById('dashboard-chat-messages');
 
+    const fileInput = document.getElementById('dashboard-chat-file');
+    const btnAttach = document.getElementById('btn-chat-attach');
+    const btnMic = document.getElementById('btn-chat-mic');
+    const previewContainer = document.getElementById('chat-image-preview-container');
+    const previewImg = document.getElementById('chat-image-preview');
+    const btnRemoveImage = document.getElementById('btn-chat-remove-image');
+
     if (!chatForm || !chatInput || !chatMessages) return;
 
+    // Chatbot state
+    let attachedImageBase64 = null;
+    if (!AppState.chatHistory) AppState.chatHistory = [];
+    let isSpeaking = null; // Stores current utterance being spoken
+
+    // 1. Image Attachment Event Handlers
+    if (btnAttach && fileInput) {
+        btnAttach.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                attachedImageBase64 = event.target.result;
+                if (previewImg && previewContainer) {
+                    previewImg.src = attachedImageBase64;
+                    previewContainer.classList.remove('hide');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (btnRemoveImage) {
+        btnRemoveImage.addEventListener('click', () => {
+            attachedImageBase64 = null;
+            if (fileInput) fileInput.value = '';
+            if (previewContainer) previewContainer.classList.add('hide');
+        });
+    }
+
+    // 2. Speech-to-Text (Voice Input)
+    if (btnMic) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-IN'; // Multi-lingual CBSE support
+
+            btnMic.addEventListener('click', () => {
+                try {
+                    recognition.start();
+                    btnMic.style.color = '#ef4444'; // Red recording indicator
+                    btnMic.style.boxShadow = '0 0 8px #ef4444';
+                } catch (e) {
+                    recognition.stop();
+                }
+            });
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                chatInput.value = (chatInput.value ? chatInput.value + ' ' : '') + transcript;
+            };
+
+            recognition.onend = () => {
+                btnMic.style.color = 'var(--text-secondary)';
+                btnMic.style.boxShadow = 'none';
+            };
+
+            recognition.onerror = () => {
+                btnMic.style.color = 'var(--text-secondary)';
+                btnMic.style.boxShadow = 'none';
+            };
+        } else {
+            btnMic.style.display = 'none'; // Hide if browser doesn't support SpeechRecognition
+        }
+    }
+
+    // 3. Form Submit Handler
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const userText = chatInput.value.trim();
-        if (!userText) return;
+        if (!userText && !attachedImageBase64) return;
 
         // Render User Message
-        appendChatMsg(userText, 'user');
+        const displayedText = userText + (attachedImageBase64 ? " [Image Attached]" : "");
+        appendChatMsg(displayedText, 'user');
         chatInput.value = '';
+
+        // Log search query analytics keyword tracking
+        if (userText) {
+            trackChatbotTopic(userText);
+        }
 
         // Render Loading/Typing Indicator
         const loadingId = appendChatMsg("Thinking...", 'bot', true);
+
+        // Capture local reference of image to clear state immediately
+        const imgPayload = attachedImageBase64;
+        attachedImageBase64 = null;
+        if (fileInput) fileInput.value = '';
+        if (previewContainer) previewContainer.classList.add('hide');
 
         try {
             const res = await fetch('/api/chatbot', {
@@ -4108,20 +4199,31 @@ function initDashboardChatbot() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: userText,
-                    classGrade: (AppState.currentUser && AppState.currentUser.classGrade) ? AppState.currentUser.classGrade : 'General'
+                    image: imgPayload,
+                    classGrade: (AppState.currentUser && AppState.currentUser.classGrade) ? AppState.currentUser.classGrade : 'General',
+                    history: AppState.chatHistory
                 })
             });
             const data = await res.json();
             
             // Remove loading and append bot response
             removeLoadingChatMsg(loadingId);
-            appendChatMsg(data.reply || "Sorry, I am having trouble understanding right now.", 'bot');
+            const replyText = data.reply || "Sorry, I am having trouble understanding right now.";
+            appendChatMsg(replyText, 'bot');
+
+            // Save to context history memory
+            AppState.chatHistory.push({ role: 'user', content: userText });
+            AppState.chatHistory.push({ role: 'bot', content: replyText });
+            if (AppState.chatHistory.length > 10) {
+                AppState.chatHistory.splice(0, 2); // Rolling history window
+            }
         } catch (err) {
             removeLoadingChatMsg(loadingId);
             appendChatMsg("Connection error. Please check your network and try again.", 'bot');
         }
     });
 
+    // 4. Render Message Bubbles & Button Events
     function appendChatMsg(text, sender, isLoading = false) {
         const msgDiv = document.createElement('div');
         const id = 'db-msg-' + Date.now() + Math.random().toString(36).substr(2, 5);
@@ -4138,15 +4240,147 @@ function initDashboardChatbot() {
         msgDiv.style.lineHeight = '1.6';
         msgDiv.style.fontWeight = '400';
         msgDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
-        
-        msgDiv.textContent = text;
+        msgDiv.style.display = 'flex';
+        msgDiv.style.flexDirection = 'column';
+        msgDiv.style.gap = '8px';
+
+        // Message text container
+        const textSpan = document.createElement('span');
+        textSpan.textContent = text;
+        msgDiv.appendChild(textSpan);
+
+        // TTS Read Aloud Speaker integration
+        if (isBot && !isLoading) {
+            const controlsDiv = document.createElement('div');
+            controlsDiv.style.display = 'flex';
+            controlsDiv.style.alignItems = 'center';
+            controlsDiv.style.gap = '8px';
+            controlsDiv.style.marginTop = '4px';
+
+            const btnSpeak = document.createElement('button');
+            btnSpeak.style.background = 'none';
+            btnSpeak.style.border = 'none';
+            btnSpeak.style.color = 'var(--text-secondary)';
+            btnSpeak.style.cursor = 'pointer';
+            btnSpeak.style.fontSize = '0.8rem';
+            btnSpeak.style.display = 'flex';
+            btnSpeak.style.alignItems = 'center';
+            btnSpeak.style.gap = '4px';
+            btnSpeak.style.padding = '2px 4px';
+            btnSpeak.innerHTML = '<i class="fa-solid fa-volume-high"></i> Read Aloud';
+
+            btnSpeak.addEventListener('click', () => {
+                if (window.speechSynthesis.speaking) {
+                    window.speechSynthesis.cancel();
+                    btnSpeak.innerHTML = '<i class="fa-solid fa-volume-high"></i> Read Aloud';
+                } else {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'en-IN'; // Indian accent CBSE voice
+                    utterance.onend = () => {
+                        btnSpeak.innerHTML = '<i class="fa-solid fa-volume-high"></i> Read Aloud';
+                    };
+                    window.speechSynthesis.speak(utterance);
+                    btnSpeak.innerHTML = '<i class="fa-solid fa-circle-stop"></i> Stop';
+                }
+            });
+
+            controlsDiv.appendChild(btnSpeak);
+            msgDiv.appendChild(controlsDiv);
+
+            // Interactive Quizzing options buttons injection
+            if (text.includes('A)') && text.includes('B)') && text.includes('C)') && text.includes('D)')) {
+                const optionsGrid = document.createElement('div');
+                optionsGrid.style.display = 'grid';
+                optionsGrid.style.gridTemplateColumns = '1fr 1fr';
+                optionsGrid.style.gap = '8px';
+                optionsGrid.style.marginTop = '6px';
+
+                ['A', 'B', 'C', 'D'].forEach(opt => {
+                    const btnOpt = document.createElement('button');
+                    btnOpt.className = 'btn btn-secondary';
+                    btnOpt.style.padding = '6px 12px';
+                    btnOpt.style.fontSize = '0.75rem';
+                    btnOpt.style.minHeight = '0';
+                    btnOpt.style.borderRadius = '8px';
+                    btnOpt.textContent = `Option ${opt}`;
+                    btnOpt.addEventListener('click', () => {
+                        chatInput.value = opt;
+                        chatForm.dispatchEvent(new window.Event('submit'));
+                    });
+                    optionsGrid.appendChild(btnOpt);
+                });
+                msgDiv.appendChild(optionsGrid);
+            }
+        }
+
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         return id;
     }
 
+
     function removeLoadingChatMsg(id) {
         const element = document.getElementById(id);
         if (element) element.remove();
+    }
+}
+
+function trackChatbotTopic(text) {
+    const prompt = text.toLowerCase();
+    let matchedSubject = null;
+
+    if (prompt.includes('physics') || prompt.includes('force') || prompt.includes('gravity') || prompt.includes('motion')) {
+        matchedSubject = 'Physics';
+    } else if (prompt.includes('chemistry') || prompt.includes('chemical') || prompt.includes('reaction') || prompt.includes('atom') || prompt.includes('acid')) {
+        matchedSubject = 'Chemistry';
+    } else if (prompt.includes('biology') || prompt.includes('cell') || prompt.includes('plant') || prompt.includes('photosynthesis') || prompt.includes('organism')) {
+        matchedSubject = 'Biology';
+    } else if (prompt.includes('math') || prompt.includes('algebra') || prompt.includes('quad') || prompt.includes('equation') || prompt.includes('root') || prompt.includes('solve')) {
+        matchedSubject = 'Mathematics';
+    } else if (prompt.includes('english') || prompt.includes('grammar') || prompt.includes('poem') || prompt.includes('literature')) {
+        matchedSubject = 'English';
+    } else if (prompt.includes('history') || prompt.includes('geography') || prompt.includes('civics') || prompt.includes('social') || prompt.includes('map')) {
+        matchedSubject = 'Social Science';
+    }
+
+    if (!matchedSubject) return;
+
+    let analytics = {};
+    try {
+        const stored = localStorage.getItem('chatbot_analytics');
+        if (stored) analytics = JSON.parse(stored);
+    } catch (e) {}
+
+    analytics[matchedSubject] = (analytics[matchedSubject] || 0) + 1;
+    localStorage.setItem('chatbot_analytics', JSON.stringify(analytics));
+
+    // Update UI recommendation instantly
+    renderSuggestedFocusAreas();
+}
+
+function renderSuggestedFocusAreas() {
+    const textContainer = document.getElementById('suggested-focus-text');
+    if (!textContainer) return;
+
+    let analytics = {};
+    try {
+        const stored = localStorage.getItem('chatbot_analytics');
+        if (stored) analytics = JSON.parse(stored);
+    } catch (e) {}
+
+    let highestSubject = null;
+    let maxCount = 0;
+
+    Object.keys(analytics).forEach(subj => {
+        if (analytics[subj] > maxCount) {
+            maxCount = analytics[subj];
+            highestSubject = subj;
+        }
+    });
+
+    if (highestSubject && maxCount > 0) {
+        textContainer.textContent = `You've been asking a lot of ${highestSubject} questions lately. Consider adding more ${highestSubject} slots to your timetable.`;
+    } else {
+        textContainer.textContent = "Start chatting with the AI Study Assistant to receive personalized study recommendations based on your query activity.";
     }
 }

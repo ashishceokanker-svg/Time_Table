@@ -159,6 +159,19 @@
                     </div>
                 </div>
 
+                <!-- Suggested Focus Areas Card -->
+                <div class="card focus-recommendation-card" id="suggested-focus-card" style="margin-bottom: 24px; border-left: 4px solid var(--accent-primary);">
+                    <div class="card-header" style="background: rgba(56, 189, 248, 0.05); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding: 16px 24px;">
+                        <h3 style="color: var(--accent-primary); margin: 0; display: flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: 700; font-family: var(--font-display);"><i class="fa-solid fa-lightbulb"></i> Suggested Focus Areas</h3>
+                    </div>
+                    <div class="card-body" style="padding: 20px 24px;">
+                        <div id="suggested-focus-container" style="font-size: 0.85rem; color: var(--text-primary); line-height: 1.6; font-weight: 400; display: flex; align-items: center; gap: 12px;">
+                            <i class="fa-solid fa-circle-info text-primary" style="font-size: 1.25rem;"></i>
+                            <span id="suggested-focus-text">Start chatting with the AI Study Assistant to receive personalized study recommendations based on your query activity.</span>
+                        </div>
+                    </div>
+                </div>
+
 
 
                 <!-- Metrics Summary Cards -->
@@ -289,9 +302,20 @@
                                 Hello! I'm your Time Table Tracker Assistant. Ask me how to add slots, view weekly reports, customize themes, or query academic progress!
                             </div>
                         </div>
+                        <!-- Image Preview Panel -->
+                        <div id="chat-image-preview-container" class="hide" style="padding: 8px 20px; border-top: 1px solid var(--border-color); background: rgba(0, 0, 0, 0.1); display: flex; align-items: center; gap: 12px;">
+                            <div style="position: relative; width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border-color); overflow: hidden;">
+                                <img id="chat-image-preview" style="width: 100%; height: 100%; object-fit: cover;">
+                                <button type="button" id="btn-chat-remove-image" style="position: absolute; top: 0; right: 0; background: rgba(0,0,0,0.6); color: white; border: none; cursor: pointer; font-size: 0.7rem; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                            <span style="font-size: 0.75rem; color: var(--text-secondary);">Image attached</span>
+                        </div>
                         <!-- Input form -->
                         <form id="dashboard-chat-form" style="display: flex; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--border-color); background: var(--bg-sidebar); margin: 0; align-items: center;">
-                            <input type="text" id="dashboard-chat-input" placeholder="Ask me anything (e.g. 'How do I add a study slot?')..." required style="flex-grow: 1; background: var(--bg-app-darker); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 16px; color: var(--text-primary); font-size: 0.85rem; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='var(--accent-primary)';" onblur="this.style.borderColor='var(--border-color)';" autocomplete="off">
+                            <input type="file" id="dashboard-chat-file" accept="image/*" class="hide">
+                            <button type="button" id="btn-chat-attach" style="padding: 10px; border-radius: 12px; min-height: 0; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); background: var(--bg-app-darker); color: var(--text-secondary); cursor: pointer; transition: all 0.2s;" title="Attach Image"><i class="fa-solid fa-paperclip"></i></button>
+                            <button type="button" id="btn-chat-mic" style="padding: 10px; border-radius: 12px; min-height: 0; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); background: var(--bg-app-darker); color: var(--text-secondary); cursor: pointer; transition: all 0.2s;" title="Voice Typing"><i class="fa-solid fa-microphone"></i></button>
+                            <input type="text" id="dashboard-chat-input" placeholder="Ask me anything (e.g. 'How do I add a study slot?')...." required style="flex-grow: 1; background: var(--bg-app-darker); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 16px; color: var(--text-primary); font-size: 0.85rem; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='var(--accent-primary)';" onblur="this.style.borderColor='var(--border-color)';" autocomplete="off">
                             <button type="submit" class="btn btn-primary" style="padding: 10px 20px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; min-height: 0; box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);">
                                 <i class="fa-solid fa-paper-plane"></i> Send
                             </button>
