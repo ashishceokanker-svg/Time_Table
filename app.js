@@ -601,6 +601,7 @@ function setupEventListeners() {
     // Initialize timeframe filters for grids
     initTimeframeFilters();
     initReportsTimeframeFilters();
+    initDashboardChatbot();
 }
 
 function setupAuthEvents() {
@@ -4082,4 +4083,67 @@ function exportToPDF(isAdmin = false) {
     doc.save(`${filenamePrefix}_Report_${startDate}_to_${endDate}.pdf`);
 }
 
+function initDashboardChatbot() {
+    const chatForm = document.getElementById('dashboard-chat-form');
+    const chatInput = document.getElementById('dashboard-chat-input');
+    const chatMessages = document.getElementById('dashboard-chat-messages');
 
+    if (!chatForm || !chatInput || !chatMessages) return;
+
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userText = chatInput.value.trim();
+        if (!userText) return;
+
+        // Render User Message
+        appendChatMsg(userText, 'user');
+        chatInput.value = '';
+
+        // Render Loading/Typing Indicator
+        const loadingId = appendChatMsg("Thinking...", 'bot', true);
+
+        try {
+            const res = await fetch('/api/chatbot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: userText })
+            });
+            const data = await res.json();
+            
+            // Remove loading and append bot response
+            removeLoadingChatMsg(loadingId);
+            appendChatMsg(data.reply || "Sorry, I am having trouble understanding right now.", 'bot');
+        } catch (err) {
+            removeLoadingChatMsg(loadingId);
+            appendChatMsg("Connection error. Please check your network and try again.", 'bot');
+        }
+    });
+
+    function appendChatMsg(text, sender, isLoading = false) {
+        const msgDiv = document.createElement('div');
+        const id = 'db-msg-' + Date.now() + Math.random().toString(36).substr(2, 5);
+        msgDiv.id = id;
+        
+        const isBot = sender === 'bot';
+        msgDiv.style.padding = '12px 16px';
+        msgDiv.style.borderRadius = isBot ? '16px 16px 16px 4px' : '16px 16px 4px 16px';
+        msgDiv.style.alignSelf = isBot ? 'flex-start' : 'flex-end';
+        msgDiv.style.maxWidth = '80%';
+        msgDiv.style.background = isBot ? 'var(--bg-app-darker)' : 'var(--accent-primary)';
+        msgDiv.style.color = isBot ? 'var(--text-primary)' : '#ffffff';
+        msgDiv.style.border = isBot ? '1px solid var(--border-color)' : 'none';
+        msgDiv.style.lineHeight = '1.6';
+        msgDiv.style.fontWeight = '400';
+        msgDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+        
+        msgDiv.textContent = text;
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return id;
+    }
+
+    function removeLoadingChatMsg(id) {
+        const element = document.getElementById(id);
+        if (element) element.remove();
+    }
+}

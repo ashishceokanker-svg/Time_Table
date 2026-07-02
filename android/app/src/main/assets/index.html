@@ -273,6 +273,31 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- AI Assistant Chatbot Card -->
+                <div class="card chatbot-card" style="margin-top: 24px; display: flex; flex-direction: column; overflow: hidden; min-height: 420px; border: 1px solid var(--border-color); border-radius: 16px; background: var(--bg-sidebar);">
+                    <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); background: rgba(120, 120, 120, 0.02); padding: 16px 24px;">
+                        <h3 style="margin: 0; display: flex; align-items: center; gap: 10px; color: var(--accent-primary); font-size: 1.1rem; font-weight: 700; font-family: var(--font-display);"><i class="fa-solid fa-robot"></i> AI Study Assistant Chatbot</h3>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                            <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block; box-shadow: 0 0 8px #10b981;"></span> Online
+                        </span>
+                    </div>
+                    <div class="card-body" style="flex-grow: 1; display: flex; flex-direction: column; padding: 0; background: rgba(0, 0, 0, 0.15);">
+                        <!-- Chat message panel -->
+                        <div id="dashboard-chat-messages" style="flex-grow: 1; padding: 20px; overflow-y: auto; height: 280px; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; max-height: 280px;">
+                            <div style="background: var(--bg-app-darker); border: 1px solid var(--border-color); color: var(--text-primary); padding: 12px 16px; border-radius: 16px 16px 16px 4px; align-self: flex-start; max-width: 80%; line-height: 1.6; font-weight: 400; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                                Hello! I'm your Time Table Tracker Assistant. Ask me how to add slots, view weekly reports, customize themes, or query academic progress!
+                            </div>
+                        </div>
+                        <!-- Input form -->
+                        <form id="dashboard-chat-form" style="display: flex; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--border-color); background: var(--bg-sidebar); margin: 0; align-items: center;">
+                            <input type="text" id="dashboard-chat-input" placeholder="Ask me anything (e.g. 'How do I add a study slot?')..." required style="flex-grow: 1; background: var(--bg-app-darker); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 16px; color: var(--text-primary); font-size: 0.85rem; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='var(--accent-primary)';" onblur="this.style.borderColor='var(--border-color)';" autocomplete="off">
+                            <button type="submit" class="btn btn-primary" style="padding: 10px 20px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; min-height: 0; box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);">
+                                <i class="fa-solid fa-paper-plane"></i> Send
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </section>
 
             <!-- Timetable View -->
