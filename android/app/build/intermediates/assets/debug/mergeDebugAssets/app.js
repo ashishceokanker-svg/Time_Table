@@ -4106,7 +4106,10 @@ function initDashboardChatbot() {
             const res = await fetch('/api/chatbot', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: userText })
+                body: JSON.stringify({
+                    message: userText,
+                    classGrade: (AppState.currentUser && AppState.currentUser.classGrade) ? AppState.currentUser.classGrade : 'General'
+                })
             });
             const data = await res.json();
             
